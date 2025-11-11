@@ -19,15 +19,17 @@ const Navbar: React.FC = () => {
                         </Button>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <Link to="">
+                        <Link to="/login">
                             <Button variant="outlined" sx={{ color: 'black', backgroundColor: 'white', borderColor: 'white', textTransform: 'none', '&:hover': { backgroundColor: '#f5f5f5', borderColor: 'white', }, }}>
                                 Log In
                             </Button>
                         </Link>
                         <Typography sx={{ color: "black" }}>|</Typography>
-                        <Button variant="contained" sx={{ backgroundColor: '#C9F8BA', color: 'black', textTransform: 'none', '&:hover': { backgroundColor: '#A4D6A2', }, }}>
-                            Sign Up
-                        </Button>
+                        <Link to="/signup">
+                            <Button variant="contained" sx={{ backgroundColor: '#C9F8BA', color: 'black', textTransform: 'none', '&:hover': { backgroundColor: '#A4D6A2', }, }}>
+                                Sign Up
+                            </Button>
+                        </Link>
                     </Box>
                 </Toolbar>
             </Container>

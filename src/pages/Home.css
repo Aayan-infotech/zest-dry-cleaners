@@ -2,5 +2,14 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Ensure sections stack properly on mobile */
+@media (max-width: 767px) {
+  .home-page {
+    min-height: auto;
+  }
 }
 

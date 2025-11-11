@@ -46,7 +46,15 @@ const OffersSection: React.FC = () => {
     <section className="offers-section">
       <Container maxWidth="xl">
         <div className="offers-section__container">
-          <Typography variant="h2" sx={{ color: 'white', fontWeight: 'bold' }} gutterBottom>
+          <Typography 
+            variant="h2" 
+            sx={{ 
+              color: 'white', 
+              fontWeight: 'bold',
+              fontSize: { xs: '1.75rem', sm: '2.25rem', md: '3rem' }
+            }} 
+            gutterBottom
+          >
             Offers
           </Typography>
 

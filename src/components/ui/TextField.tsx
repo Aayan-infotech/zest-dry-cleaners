@@ -1,53 +1,67 @@
-import React from 'react';
-import './TextField.css';
+import React from "react";
+import { TextField, IconButton, InputAdornment } from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 
-interface TextFieldProps {
-  label?: string;
-  placeholder?: string;
-  value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  type?: 'text' | 'email' | 'password' | 'number' | 'tel';
-  error?: string;
-  disabled?: boolean;
-  className?: string;
-  name?: string;
+interface CustomTextFieldProps {
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  type?: "text" | "email" | "password";
+  showPassword?: boolean;
+  toggleShowPassword?: () => void;
+  fullWidth?: boolean;
   required?: boolean;
 }
 
-const TextField: React.FC<TextFieldProps> = ({
+const TextFieldComponent: React.FC<CustomTextFieldProps> = ({
   label,
-  placeholder,
   value,
   onChange,
-  type = 'text',
-  error,
-  disabled = false,
-  className = '',
-  name,
+  type = "text",
+  showPassword,
+  toggleShowPassword,
+  fullWidth = true,
   required = false,
 }) => {
   return (
-    <div className={`custom-textfield ${className}`}>
-      {label && (
-        <label className="custom-textfield__label">
-          {label}
-          {required && <span className="custom-textfield__required">*</span>}
-        </label>
-      )}
-      <input
-        type={type}
-        className={`custom-textfield__input ${error ? 'custom-textfield__input--error' : ''}`}
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        name={name}
-        required={required}
-      />
-      {error && <span className="custom-textfield__error">{error}</span>}
-    </div>
+    <TextField
+      fullWidth={fullWidth}
+      required={required}
+      label={label}
+      variant="outlined"
+      type={type === "password" && showPassword ? "text" : type}
+      value={value}
+      onChange={onChange}
+      InputLabelProps={{ style: { color: "#336B3F" } }}
+      sx={{
+        "& .MuiOutlinedInput-root": {
+          borderRadius: "14px",
+          backgroundColor: "#C9F8BA",
+          "& fieldset": { borderColor: "#336B3F" },
+          "&:hover fieldset": { borderColor: "#336B3F" },
+          "&.Mui-focused fieldset": { borderColor: "#336B3F" },
+        },
+        input: { color: "#336B3F" },
+      }}
+      InputProps={
+        type === "password"
+          ? {
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={toggleShowPassword}
+                    edge="end"
+                    sx={{ color: "#336B3F" }}
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }
+          : undefined
+      }
+    />
   );
 };
 
-export default TextField;
-
+export default TextFieldComponent;

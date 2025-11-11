@@ -1,0 +1,11 @@
+.profile-page {
+  min-height: calc(100vh - 200px);
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+@media (max-width: 600px) {
+  .profile-page {
+    min-height: calc(100vh - 150px);
+  }
+}
+
