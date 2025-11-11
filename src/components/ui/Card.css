@@ -1,0 +1,33 @@
+.custom-card {
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: inherit;
+  background: var(--card-bg, transparent);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.custom-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+
+.custom-card--default {
+  background-color: white;
+}
+
+.custom-card--colored {
+  background-color: var(--card-bg, #f0f0f0);
+}
+
+.custom-card--clickable {
+  cursor: pointer;
+}
+
+.custom-card--clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+

@@ -1,0 +1,109 @@
+.offers-section {
+  background-color: var(--primary-dark-green);
+  padding: 80px 0;
+}
+
+.offers-section__container {
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.offers-section__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 32px;
+}
+
+.offers-section__card {
+  position: relative;
+  border-radius: 20px;
+  color: #fff;
+  overflow: hidden;
+  min-height: 250px;
+  display: flex;
+  align-items: stretch;
+}
+
+.offers-section__content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.offers-section__text {
+  flex: 1;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  z-index: 2;
+}
+
+.offers-section__brand {
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.9;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.offers-section__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(255, 255, 255, 0.25);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.offers-section__badge svg {
+  font-size: 18px;
+}
+
+.offers-section__discount {
+  font-size: 2.8rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.offers-section__description {
+  font-size: 16px;
+  margin-top: 6px;
+  opacity: 0.95;
+}
+
+.offers-section__image {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  /* height: 100%; */
+}
+
+.offers-section__image img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  transform: scale(1.1);
+  margin-right: -20px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .offers-section__content {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .offers-section__image img {
+    width: 70%;
+    margin: 0 auto;
+    transform: none;
+  }
+}
