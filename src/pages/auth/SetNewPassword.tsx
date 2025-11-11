@@ -16,7 +16,7 @@ const SetNewPassword: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors = { password: '', confirmPassword: '' };
-    
+
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 8) {
@@ -24,15 +24,15 @@ const SetNewPassword: React.FC = () => {
     } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
       newErrors.password = 'Password must contain uppercase, lowercase, and number';
     }
-    
+
     if (!confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password';
     } else if (password !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
-    
+
     setErrors(newErrors);
-    
+
     if (!newErrors.password && !newErrors.confirmPassword) {
       navigate('/signin');
     }
@@ -43,21 +43,21 @@ const SetNewPassword: React.FC = () => {
       <Container maxWidth="sm">
         <Box className="auth-panel">
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Typography 
-              variant="h4" 
-              sx={{ 
-                fontWeight: 700, 
-                color: '#336B3F', 
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 700,
+                color: '#336B3F',
                 mb: 1,
                 fontSize: { xs: '1.5rem', md: '2rem' }
               }}
             >
               Set New Password
             </Typography>
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                color: '#336B3F', 
+            <Typography
+              variant="body2"
+              sx={{
+                color: '#336B3F',
                 opacity: 0.8,
                 fontSize: { xs: '0.875rem', md: '1rem' }
               }}
@@ -130,6 +130,7 @@ const SetNewPassword: React.FC = () => {
             <Button
               type="submit"
               variant="contained"
+              onClick={() => navigate('/welcome')}
               fullWidth
               sx={{
                 backgroundColor: '#336B3F',
