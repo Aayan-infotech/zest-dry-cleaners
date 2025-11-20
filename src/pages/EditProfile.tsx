@@ -10,13 +10,11 @@ import {
   IconButton,
   Container,
   FormControlLabel,
-  Checkbox,
   FormGroup,
   Switch,
   Card,
-  CardHeader,
-  CardMedia,
   CardContent,
+  Divider,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -35,6 +33,11 @@ import TextFieldComponent from "../components/ui/TextField";
 import { Button, Select } from "../components/ui";
 import ChangePasswordDialog from "../components/dialogs/ChangePasswordDialog";
 import PaymentMethodDialog from "../components/dialogs/PaymentMethodDialog";
+import type { CardData } from "../components/dialogs/PaymentMethodDialog";
+import LocationDialog from "../components/dialogs/LocationDialog";
+import type { LocationData } from "../components/dialogs/LocationDialog";
+import { GOOGLE_MAPS_API_KEY } from "../utils/config";
+import AddIcon from '@mui/icons-material/Add';
 import "./EditProfile.css";
 
 // Get country codes dynamically from libphonenumber-js
@@ -57,17 +60,13 @@ const getMaxLengthForCountry = (countryCode: string): number => {
     if (exampleNumber) {
       const parsed = parsePhoneNumber(exampleNumber.number, countryCode as any);
       if (parsed) {
-        // Get the national number length from example
         const exampleLength = parsed.nationalNumber.length;
-        // Add some buffer (usually phone numbers can be 1-2 digits longer)
         return exampleLength + 2;
       }
     }
   } catch (error) {
-    // If we can't determine, return a default based on common patterns
     console.warn(`Could not determine max length for ${countryCode}, using default`);
   }
-  // Default max length (most countries are between 7-15 digits)
   return 15;
 };
 
@@ -116,6 +115,7 @@ const getIndianStates = () => {
 const EditProfile = () => {
   const [changePasswordDialogOpen, setChangePasswordDialogOpen] = useState(false);
   const [paymentMethodDialogOpen, setPaymentMethodDialogOpen] = useState(false);
+  const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
 
@@ -136,6 +136,9 @@ const EditProfile = () => {
   const [showProfileEditForm, setShowProfileEditForm] = useState(true);
   const [showContactForm, setShowContactForm] = useState(false);
   const [showPaymentCardForm, setShowPaymentCardForm] = useState(false);
+  const [showLocationCard, setShowLocationCard] = useState(false);
+  const [savedCards, setSavedCards] = useState<CardData[]>([]);
+  const [savedLocations, setSavedLocations] = useState<LocationData[]>([]);
   // Contact form state variables
   const [contactSubject, setContactSubject] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -237,11 +240,31 @@ const EditProfile = () => {
     setShowContactForm(false);
   };
 
-  const handlePaymentMethodDialogOpen = () => {
-    setPaymentMethodDialogOpen(true);
+  const handleShowLocationCard = () => {
+    setShowLocationCard(true);
+    setShowPaymentCardForm(false);
     setShowProfileEditForm(false);
     setShowContactForm(false);
-    setShowPaymentCardForm(false);
+  };
+
+  const handlePaymentMethodDialogOpen = () => {
+    setPaymentMethodDialogOpen(true);
+  };
+
+  const handleAddCard = (card: CardData) => {
+    setSavedCards([...savedCards, card]);
+  };
+
+  const handleAddLocation = (location: LocationData) => {
+    setSavedLocations([...savedLocations, location]);
+  };
+
+  const maskCardNumber = (cardNumber: string) => {
+    const cleaned = cardNumber.replace(/\s/g, '');
+    if (cleaned.length < 4) return cardNumber;
+    const last4 = cleaned.slice(-4);
+    const first4 = cleaned.slice(0, 4);
+    return `${first4} – XXXX – XXXX – ${last4}`;
   };
 
   return (
@@ -276,7 +299,7 @@ const EditProfile = () => {
                   </Box>
                   <ChevronRightIcon />
                 </Box>
-                <Box className="sidebar-item" onClick={() => openDialog("Locations")}>
+                <Box className="sidebar-item" onClick={() => handleShowLocationCard()}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                     <LocationOnIcon />
                     <Box>
@@ -484,25 +507,223 @@ const EditProfile = () => {
               )}
               {showPaymentCardForm && (
                 <Box>
-                  <Card sx={{ backgroundColor: "rgba(201, 248, 186, 1)" }}>
+                  <Card sx={{ backgroundColor: "rgba(201, 248, 186, 1)", borderRadius: "16px" }}>
                     <CardContent>
                       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Typography variant="body2">My Card</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: "bold", color: "#336B3F" }}>My Cards</Typography>
                         <Button
                           onClick={() => handlePaymentMethodDialogOpen()}
-                          type="submit"
+                          type="button"
                           size="small"
                           style={{
-                            backgroundColor: "rgba(143, 146, 161, 0.1)",
-                            border: "none",
+                            backgroundColor: "#C9F8BA",
+                            border: "1px solid #336B3F",
                             color: "#336B3F",
                             borderRadius: "12px",
-                            fontWeight: "bold"
+                            fontWeight: "bold",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            padding: "6px 12px"
                           }}
                         >
-                          Add Card
+                          <AddIcon sx={{ fontSize: 18 }} />
+                          Add New
                         </Button>
                       </Box>
+                      <Divider sx={{ my: 2, backgroundColor: "rgba(143, 146, 161, 0.1)" }} />
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        {savedCards.length === 0 ? (
+                          <Typography sx={{ color: "rgba(51, 107, 63, 0.7)", textAlign: "center", py: 4 }}>
+                            No cards added yet. Click "Add New" to add a card.
+                          </Typography>
+                        ) : (
+                          savedCards.map((card) => (
+                            <Box
+                              key={card.id}
+                              sx={{
+                                background: "linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7b4397 100%)",
+                                borderRadius: "16px",
+                                padding: "24px",
+                                color: "white",
+                                position: "relative",
+                                minHeight: "200px",
+                                display: "flex",
+                                flexDirection: "column",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                <Box sx={{ display: "flex", gap: 1 }}>
+                                  <Box
+                                    sx={{
+                                      width: 40,
+                                      height: 40,
+                                      borderRadius: "50%",
+                                      backgroundColor: "#EB001B",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                    }}
+                                  >
+                                    <Box
+                                      sx={{
+                                        width: 30,
+                                        height: 30,
+                                        borderRadius: "50%",
+                                        backgroundColor: "#F79E1B",
+                                        marginLeft: "-15px",
+                                      }}
+                                    />
+                                  </Box>
+                                </Box>
+                                <Box
+                                  sx={{
+                                    width: 40,
+                                    height: 30,
+                                    backgroundColor: "#FFD700",
+                                    borderRadius: "4px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <Box
+                                    sx={{
+                                      width: "80%",
+                                      height: "60%",
+                                      backgroundColor: "rgba(0,0,0,0.1)",
+                                      borderRadius: "2px",
+                                    }}
+                                  />
+                                </Box>
+                              </Box>
+                              <Box sx={{ mt: 4 }}>
+                                <Typography
+                                  variant="h6"
+                                  sx={{
+                                    fontSize: "20px",
+                                    letterSpacing: "2px",
+                                    fontFamily: "monospace",
+                                    mb: 3,
+                                  }}
+                                >
+                                  {maskCardNumber(card.cardNumber)}
+                                </Typography>
+                                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                                  <Box>
+                                    <Typography variant="caption" sx={{ opacity: 0.8, fontSize: "10px" }}>
+                                      CARDHOLDER NAME
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontSize: "14px", fontWeight: "bold" }}>
+                                      {card.cardHolderName}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ textAlign: "right" }}>
+                                    <Typography variant="caption" sx={{ opacity: 0.8, fontSize: "10px" }}>
+                                      VALID THRU
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontSize: "14px", fontWeight: "bold" }}>
+                                      {card.expiryDate}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              </Box>
+                            </Box>
+                          ))
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Box>
+              )}
+
+              {showLocationCard && (
+                <Box>
+                  <Card sx={{ backgroundColor: "rgba(201, 248, 186, 1)", borderRadius: "16px" }}>
+                    <CardContent>
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Typography variant="h6" sx={{ fontWeight: "bold", color: "#336B3F" }}>My Locations</Typography>
+                        <Button
+                          onClick={() => setLocationDialogOpen(true)}
+                          type="button"
+                          size="small"
+                          style={{
+                            backgroundColor: "#C9F8BA",
+                            border: "1px solid #336B3F",
+                            color: "#336B3F",
+                            borderRadius: "12px",
+                            fontWeight: "bold",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            padding: "6px 12px"
+                          }}
+                        >
+                          <AddIcon sx={{ fontSize: 18 }} />
+                          Add New
+                        </Button>
+                      </Box>
+                      <Divider sx={{ my: 2, backgroundColor: "rgba(143, 146, 161, 0.1)" }} />
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        {savedLocations.length === 0 ? (
+                          <Typography sx={{ color: "rgba(51, 107, 63, 0.7)", textAlign: "center", py: 4 }}>
+                            No locations added yet. Click "Add New" to add a location.
+                          </Typography>
+                        ) : (
+                          savedLocations.map((location) => {
+                            // Encode address for URL
+                            const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(
+                              location.address
+                            )}&zoom=15&size=400x150&markers=color:blue|label:H|${encodeURIComponent(location.address)}&key=${GOOGLE_MAPS_API_KEY}`;
+
+                            return (
+                              <Box
+                                key={location.id}
+                                sx={{
+                                  backgroundColor: "rgba(51, 107, 63, 0.1)",
+                                  borderRadius: "12px",
+                                  overflow: "hidden",
+                                  border: "1px solid rgba(51, 107, 63, 0.2)",
+                                }}
+                              >
+                                {/* Map Preview */}
+                                <Box
+                                  component="img"
+                                  src={mapUrl}
+                                  alt={location.address}
+                                  sx={{
+                                    width: "100%",
+                                    height: "150px",
+                                    objectFit: "cover",
+                                    borderTopLeftRadius: "12px",
+                                    borderTopRightRadius: "12px",
+                                  }}
+                                />
+
+                                {/* Address Details */}
+                                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, p: 2 }}>
+                                  <LocationOnIcon sx={{ color: "#336B3F", fontSize: 28, mt: 0.5 }} />
+                                  <Box sx={{ flex: 1 }}>
+                                    <Typography variant="h6" sx={{ color: "#336B3F", fontWeight: "bold", mb: 1 }}>
+                                      {location.address}
+                                    </Typography>
+                                    <Box sx={{ display: "flex", gap: 2, mt: 1 }}>
+                                      <Typography variant="body2" sx={{ color: "rgba(51, 107, 63, 0.7)" }}>
+                                        <strong>Zip Code:</strong> {location.zipCode}
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ color: "rgba(51, 107, 63, 0.7)" }}>
+                                        <strong>State:</strong> {indianStates.find(s => s.value === location.state)?.label || location.state}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                </Box>
+                              </Box>
+                            );
+                          })
+                        )}
+                      </Box>
+
                     </CardContent>
                   </Card>
                 </Box>
@@ -520,6 +741,13 @@ const EditProfile = () => {
       <PaymentMethodDialog
         open={paymentMethodDialogOpen}
         onClose={() => setPaymentMethodDialogOpen(false)}
+        onAddCard={handleAddCard}
+      />
+      <LocationDialog
+        open={locationDialogOpen}
+        onClose={() => setLocationDialogOpen(false)}
+        onAddLocation={handleAddLocation}
+        indianStates={indianStates}
       />
 
       {/* Generic Dialog for other items */}

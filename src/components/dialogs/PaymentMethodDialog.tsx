@@ -11,14 +11,24 @@ import CloseIcon from "@mui/icons-material/Close";
 import TextFieldComponent from "../ui/TextField";
 import { Button } from "../ui";
 
+export interface CardData {
+  id: string;
+  cardNumber: string;
+  cardHolderName: string;
+  expiryDate: string;
+  cvv: string;
+}
+
 interface PaymentMethodDialogProps {
   open: boolean;
   onClose: () => void;
+  onAddCard?: (card: CardData) => void;
 }
 
 const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
   open,
   onClose,
+  onAddCard,
 }) => {
   const [cardNumber, setCardNumber] = useState("");
   const [cardHolderName, setCardHolderName] = useState("");
@@ -27,13 +37,21 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle payment method addition logic here
-    console.log({
-      cardNumber,
-      cardHolderName,
-      expiryDate,
-      cvv,
-    });
+    if (onAddCard) {
+      const newCard: CardData = {
+        id: Date.now().toString(),
+        cardNumber,
+        cardHolderName,
+        expiryDate,
+        cvv,
+      };
+      onAddCard(newCard);
+    }
+    // Reset form
+    setCardNumber("");
+    setCardHolderName("");
+    setExpiryDate("");
+    setCvv("");
     // Close dialog after submission
     onClose();
   };
@@ -84,10 +102,8 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
         }
       }}
     >
-      <DialogTitle>
-        <Typography variant="h5" sx={{ color: "#336B3F", fontWeight: "bold" }}>
-          Payment Methods
-        </Typography>
+      <DialogTitle sx={{ color: "#336B3F", fontWeight: "bold", fontSize: "1.5rem" }}>
+        Payment Methods
         <IconButton onClick={onClose} sx={{ position: "absolute", right: 8, top: 8, color: "#336B3F", }}>
           <CloseIcon />
         </IconButton>

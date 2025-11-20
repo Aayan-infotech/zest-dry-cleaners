@@ -17,7 +17,7 @@ interface SelectProps {
   name?: string;
   required?: boolean;
   fullWidth?: boolean;
-  variant?: 'light' | 'dark';
+  variant?: 'light' | 'dark' | 'dialog';
 }
 
 const Select: React.FC<SelectProps> = ({
@@ -42,9 +42,9 @@ const Select: React.FC<SelectProps> = ({
       error={Boolean(error)}
       sx={{
         "& .MuiInputLabel-root": {
-          color: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
+          color: isDark ? "rgba(250, 199, 199, 1)" : variant === 'dialog' ? "#336B3F" : "#C9F8BA",
           "&.Mui-focused": {
-            color: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
+            color: isDark ? "rgba(250, 199, 199, 1)" : variant === 'dialog' ? "#336B3F" : "#C9F8BA",
           },
         },
         "& .MuiOutlinedInput-root": {
@@ -52,24 +52,24 @@ const Select: React.FC<SelectProps> = ({
           backgroundColor: "transparent !important",
           background: "none !important",
           "& fieldset": { 
-            borderColor: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
+            borderColor: isDark ? "rgba(250, 199, 199, 1)" : variant === 'dialog' ? "#336B3F" : "#C9F8BA",
             borderWidth: "2px",
           },
           "&:hover fieldset": { 
-            borderColor: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
+            borderColor: isDark ? "rgba(250, 199, 199, 1)" : variant === 'dialog' ? "#336B3F" : "#C9F8BA",
             borderWidth: "2px",
           },
           "&.Mui-focused fieldset": { 
-            borderColor: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
+            borderColor: isDark ? "rgba(250, 199, 199, 1)" : variant === 'dialog' ? "#336B3F" : "#C9F8BA",
             borderWidth: "2px",
           },
         },
         "& .MuiSelect-select": {
-          color: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
+          color: isDark ? "rgba(250, 199, 199, 1)" : variant === 'dialog' ? "#336B3F" : "#C9F8BA",
           backgroundColor: "transparent !important",
         },
         "& .MuiSvgIcon-root": {
-          color: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
+          color: isDark ? "rgba(250, 199, 199, 1)" : variant === 'dialog' ? "#336B3F" : "#C9F8BA",
         },
       }}
     >

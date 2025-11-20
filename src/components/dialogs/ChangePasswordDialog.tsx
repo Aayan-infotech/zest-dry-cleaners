@@ -52,10 +52,8 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({
         }
       }}
     >
-      <DialogTitle>
-        <Typography variant="h5" sx={{ color: "#336B3F", fontWeight: "bold" }}>
-          Change Password
-        </Typography>
+      <DialogTitle sx={{ color: "#336B3F", fontWeight: "bold", fontSize: "1.5rem" }}>
+        Change Password
         <IconButton onClick={onClose} sx={{ position: "absolute", right: 8, top: 8, color: "#336B3F", }}>
           <CloseIcon />
         </IconButton>
