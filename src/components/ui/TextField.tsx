@@ -6,11 +6,15 @@ interface CustomTextFieldProps {
   label: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  type?: "text" | "email" | "password";
+  type?: "text" | "email" | "password" | "tel";
   showPassword?: boolean;
   toggleShowPassword?: () => void;
   fullWidth?: boolean;
   required?: boolean;
+  placeholder?: string;
+  borderColor?: string;
+  labelColor?: string;
+  textColor?: string;
 }
 
 const TextFieldComponent: React.FC<CustomTextFieldProps> = ({
@@ -22,6 +26,10 @@ const TextFieldComponent: React.FC<CustomTextFieldProps> = ({
   toggleShowPassword,
   fullWidth = true,
   required = false,
+  placeholder,
+  borderColor = "#C9F8BA",
+  labelColor = "#C9F8BA",
+  textColor = "#C9F8BA",
 }) => {
   return (
     <TextField
@@ -32,16 +40,40 @@ const TextFieldComponent: React.FC<CustomTextFieldProps> = ({
       type={type === "password" && showPassword ? "text" : type}
       value={value}
       onChange={onChange}
-      InputLabelProps={{ style: { color: "#336B3F" } }}
+      placeholder={placeholder}
+      InputLabelProps={{ style: { color: labelColor } }}
       sx={{
+        "& .MuiInputLabel-root": {
+          color: `${labelColor} !important`,
+          "&.Mui-focused": {
+            color: `${labelColor} !important`,
+          },
+        },
         "& .MuiOutlinedInput-root": {
           borderRadius: "14px",
-          backgroundColor: "#C9F8BA",
-          "& fieldset": { borderColor: "#336B3F" },
-          "&:hover fieldset": { borderColor: "#336B3F" },
-          "&.Mui-focused fieldset": { borderColor: "#336B3F" },
+          backgroundColor: "transparent !important",
+          background: "none !important",
+          "& fieldset": { borderColor: borderColor, borderWidth: "2px" },
+          "&:hover fieldset": { borderColor: borderColor, borderWidth: "2px" },
+          "&.Mui-focused fieldset": { borderColor: borderColor, borderWidth: "2px" },
+          "&:hover": {
+            backgroundColor: "transparent !important",
+            background: "none !important",
+          },
+          "&.Mui-focused": {
+            backgroundColor: "transparent !important",
+            background: "none !important",
+          },
         },
-        input: { color: "#336B3F" },
+        "& .MuiOutlinedInput-input": {
+          backgroundColor: "transparent !important",
+          background: "none !important",
+        },
+        input: { 
+          color: textColor,
+          backgroundColor: "transparent !important",
+          background: "none !important",
+        },
       }}
       InputProps={
         type === "password"

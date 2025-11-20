@@ -138,6 +138,7 @@ const MyOrders: React.FC = () => {
                                                     Track Order
                                                 </Button>
                                                 <Button
+                                                    onClick={() => handleTrackOrder(order.id)}
                                                     variant="secondary"
                                                     size="medium"
                                                     className="hover-lift smooth-transition rounded-pill"

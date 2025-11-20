@@ -125,6 +125,8 @@ const DashboardNavbar: React.FC = () => {
               <MenuItem onClick={handleLocationClose}>Surabaya, Indonesia</MenuItem>
             </Menu>
             <IconButton
+              component={Link}
+              to="/notifications"
               color="inherit"
               className="hover-scale smooth-transition"
               sx={{
@@ -135,6 +137,8 @@ const DashboardNavbar: React.FC = () => {
               <NotificationsIcon sx={{ fontSize: { xs: '20px', md: '24px' } }} />
             </IconButton>
             <IconButton
+              component={Link}
+              to="/edit-profile"
               color="inherit"
               className="hover-scale smooth-transition"
               sx={{

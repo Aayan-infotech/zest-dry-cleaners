@@ -42,29 +42,34 @@ const Select: React.FC<SelectProps> = ({
       error={Boolean(error)}
       sx={{
         "& .MuiInputLabel-root": {
-          color: isDark ? "rgba(250, 199, 199, 1)" : "#336B3F",
+          color: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
           "&.Mui-focused": {
-            color: isDark ? "rgba(250, 199, 199, 1)" : "#336B3F",
+            color: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
           },
         },
         "& .MuiOutlinedInput-root": {
           borderRadius: "14px",
-          backgroundColor: isDark ? "transparent" : "#C9F8BA",
+          backgroundColor: "transparent !important",
+          background: "none !important",
           "& fieldset": { 
-            borderColor: isDark ? "rgba(250, 199, 199, 1)" : "#336B3F",
+            borderColor: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
+            borderWidth: "2px",
           },
           "&:hover fieldset": { 
-            borderColor: isDark ? "rgba(250, 199, 199, 1)" : "#336B3F",
+            borderColor: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
+            borderWidth: "2px",
           },
           "&.Mui-focused fieldset": { 
-            borderColor: isDark ? "rgba(250, 199, 199, 1)" : "#336B3F",
+            borderColor: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
+            borderWidth: "2px",
           },
         },
         "& .MuiSelect-select": {
-          color: isDark ? "rgba(250, 199, 199, 1)" : "#336B3F",
+          color: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
+          backgroundColor: "transparent !important",
         },
         "& .MuiSvgIcon-root": {
-          color: isDark ? "rgba(250, 199, 199, 1)" : "#336B3F",
+          color: isDark ? "rgba(250, 199, 199, 1)" : "#C9F8BA",
         },
       }}
     >

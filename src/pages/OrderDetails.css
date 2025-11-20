@@ -9,7 +9,6 @@
 }
 
 .service-details-section {
-  background-color: #C9F8BA;
   border-radius: 24px;
   padding: 32px;
   margin-bottom: 24px;
@@ -17,7 +16,7 @@
 
 .service-details-content-wrapper {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: 1fr 500px;
   gap: 32px;
   align-items: center;
 }
@@ -28,13 +27,11 @@
 }
 
 .service-image-card {
-  background-color: #FCE9E9;
-  border-radius: 20px;
-  padding: 20px;
+  border-radius: 25px;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 300px;
+  height: 400px;
   overflow: hidden;
 }
 
@@ -46,28 +43,33 @@
 }
 
 .pickup-delivery-section {
-  background-color: rgba(51, 107, 63, 0.8);
+  background-color: rgba(68, 132, 82, 1);
   border-radius: 24px;
   padding: 32px;
   margin-bottom: 24px;
 }
 
 .billings-section {
-  background-color: #C9F8BA;
+  background-color: rgba(201, 248, 186, 1);
   border-radius: 24px;
   padding: 32px;
   margin-bottom: 24px;
 }
 
 .billing-items {
-  max-width: 500px;
+  max-width: 100%;
 }
 
 .ratings-section {
-  background-color: rgba(51, 107, 63, 0.8);
+  background-color: rgba(68, 132, 82, 1);
   border-radius: 24px;
   padding: 32px;
   margin-bottom: 24px;
+}
+
+.feedback-btn {
+  border-radius: 30px;
+  padding: 2px 24px;
 }
 
 /* Responsive Styles */
@@ -125,4 +127,3 @@
     height: 180px;
   }
 }
-

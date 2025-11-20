@@ -1,0 +1,151 @@
+import React, { useState } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
+  Typography,
+  Box,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import TextFieldComponent from "../ui/TextField";
+import { Button } from "../ui";
+
+interface PaymentMethodDialogProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
+  open,
+  onClose,
+}) => {
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardHolderName, setCardHolderName] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [cvv, setCvv] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Handle payment method addition logic here
+    console.log({
+      cardNumber,
+      cardHolderName,
+      expiryDate,
+      cvv,
+    });
+    // Close dialog after submission
+    onClose();
+  };
+
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
+    const matches = v.match(/\d{4,16}/g);
+    const match = (matches && matches[0]) || "";
+    const parts = [];
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+    if (parts.length) {
+      return parts.join(" ").substring(0, 19);
+    } else {
+      return v.substring(0, 16);
+    }
+  };
+
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCardNumber(e.target.value);
+    setCardNumber(formatted);
+  };
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length >= 2) {
+      value = value.substring(0, 2) + "/" + value.substring(2, 4);
+    }
+    setExpiryDate(value);
+  };
+
+  const handleCvvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, "").substring(0, 3);
+    setCvv(value);
+  };
+
+  return (
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      fullWidth 
+      maxWidth="sm"
+      PaperProps={{
+        sx: {
+          backgroundColor: "rgba(201, 248, 186, 1)",
+          borderRadius: "28px",
+        }
+      }}
+    >
+      <DialogTitle>
+        <Typography variant="h5" sx={{ color: "#336B3F", fontWeight: "bold" }}>
+          Payment Methods
+        </Typography>
+        <IconButton onClick={onClose} sx={{ position: "absolute", right: 8, top: 8, color: "#336B3F", }}>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" sx={{ color: "rgba(51, 107, 63, 0.7)", mb: 3, }}>
+          Add credit & debit cards
+        </Typography>
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <TextFieldComponent
+            label="Card Number"
+            value={cardNumber}
+            onChange={handleCardNumberChange}
+            placeholder="1234 5678 9012 3456"
+            borderColor="#336B3F"
+            labelColor="#336B3F"
+            textColor="#336B3F"
+            required
+          />
+          <TextFieldComponent 
+            label="Card Holder Name" 
+            value={cardHolderName} 
+            onChange={(e) => setCardHolderName(e.target.value)} 
+            borderColor="#336B3F"
+            labelColor="#336B3F"
+            textColor="#336B3F"
+            required 
+          />
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <TextFieldComponent 
+              label="Expiry Date" 
+              value={expiryDate} 
+              onChange={handleExpiryChange} 
+              placeholder="MM/YY" 
+              borderColor="#336B3F"
+              labelColor="#336B3F"
+              textColor="#336B3F"
+              required 
+            />
+            <TextFieldComponent 
+              label="CVV" 
+              value={cvv} 
+              onChange={handleCvvChange} 
+              placeholder="123" 
+              borderColor="#336B3F"
+              labelColor="#336B3F"
+              textColor="#336B3F"
+              required 
+            />
+          </Box>
+          <Button type="submit" variant="primary" size="large" style={{ backgroundColor: "#336B3F", color: "white", borderRadius: "12px", fontWeight: "bold", marginTop: 2, }}>
+            Add Card
+          </Button>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default PaymentMethodDialog;
+

@@ -19,6 +19,9 @@ import Welcome from '../pages/auth/Welcome';
 import GettingStarted from '../pages/auth/GettingStarted';
 import PrivacyPolicy from '../pages/PrivacyPolicy';
 import TermsAndConditions from '../pages/TermsAndConditions';
+import OrderTracking from '../pages/OrderTracking';
+import EditProfile from '../pages/EditProfile';
+import Notifications from '../pages/Notifications';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -46,6 +49,9 @@ const AppRoutes: React.FC = () => {
         <Route path="/services-list" element={<ServicesList />} />
         <Route path="/services/:id" element={<ServiceDetails />} />
         <Route path="/order-details/:id" element={<OrderDetails />} />
+        <Route path="/tracking" element={<OrderTracking />} />
+        <Route path="/edit-profile" element={<EditProfile />} />
+        <Route path="/notifications" element={<Notifications />} />
       </Routes>
     </BrowserRouter>
   );
