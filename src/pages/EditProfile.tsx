@@ -4,9 +4,6 @@ import {
   Grid,
   Typography,
   Avatar,
-  Dialog,
-  DialogTitle,
-  DialogContent,
   IconButton,
   Container,
   FormControlLabel,
@@ -16,7 +13,6 @@ import {
   CardContent,
   Divider,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
@@ -44,6 +40,7 @@ import PaymentMethodDialog from "../components/dialogs/PaymentMethodDialog";
 import type { CardData } from "../components/dialogs/PaymentMethodDialog";
 import LocationDialog from "../components/dialogs/LocationDialog";
 import type { LocationData } from "../components/dialogs/LocationDialog";
+import LogoutDialog from "../components/dialogs/LogoutDialog";
 import { GOOGLE_MAPS_API_KEY } from "../utils/config";
 import AddIcon from '@mui/icons-material/Add';
 import "./EditProfile.css";
@@ -124,8 +121,7 @@ const EditProfile = () => {
   const [changePasswordDialogOpen, setChangePasswordDialogOpen] = useState(false);
   const [paymentMethodDialogOpen, setPaymentMethodDialogOpen] = useState(false);
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogTitle, setDialogTitle] = useState("");
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   // Get dynamic data
   const countryCodes = useMemo(() => getCountryCodes(), []);
@@ -156,14 +152,6 @@ const EditProfile = () => {
     "https://media.istockphoto.com/id/1437816897/photo/business-woman-manager-or-human-resources-portrait-for-career-success-company-we-are-hiring.jpg?s=612x612&w=0&k=20&c=tyLvtzutRh22j9GqSGI33Z4HpIwv9vL_MZw_xOE19NQ="
   );
 
-  const openDialog = (title: string) => {
-    setDialogTitle(title);
-    setDialogOpen(true);
-  };
-
-  const closeDialog = () => {
-    setDialogOpen(false);
-  };
 
   // Get country code object from dial code
   const getCountryCodeFromDialCode = (dialCode: string) => {
@@ -381,7 +369,7 @@ const EditProfile = () => {
                   <ChevronRightIcon />
                 </Box>
 
-                <Box className="sidebar-item" onClick={() => openDialog("Logout")}>
+                <Box className="sidebar-item" onClick={() => setLogoutDialogOpen(true)}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                     <LogoutIcon />
                     <Box>
@@ -939,19 +927,10 @@ const EditProfile = () => {
         onAddLocation={handleAddLocation}
         indianStates={indianStates}
       />
-
-      {/* Generic Dialog for other items */}
-      <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>
-          {dialogTitle}
-          <IconButton onClick={closeDialog} sx={{ float: "right" }}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <Typography>This is a dialog for {dialogTitle}.</Typography>
-        </DialogContent>
-      </Dialog>
+      <LogoutDialog
+        open={logoutDialogOpen}
+        onClose={() => setLogoutDialogOpen(false)}
+      />
 
     </Box>
   );

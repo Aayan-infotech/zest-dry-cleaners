@@ -13,6 +13,7 @@ import MyOrders from '../pages/MyOrders';
 import OrderDetails from '../pages/OrderDetails';
 import SignIn from '../pages/auth/SignIn';
 import ForgotPassword from '../pages/auth/ForgotPassword';
+import OTPVerification from '../pages/auth/OTPVerification';
 import ResetEmailSent from '../pages/auth/ResetEmailSent';
 import SetNewPassword from '../pages/auth/SetNewPassword';
 import Welcome from '../pages/auth/Welcome';
@@ -40,6 +41,7 @@ const AppRoutes: React.FC = () => {
           <Route path="login" element={<SignIn />} />
           <Route path="signup" element={<GettingStarted />} />
           <Route path="forgot-password" element={<ForgotPassword />} />
+          <Route path="otp-verification" element={<OTPVerification />} />
           <Route path="reset-email-sent" element={<ResetEmailSent />} />
           <Route path="set-new-password" element={<SetNewPassword />} />
           <Route path="welcome" element={<Welcome />} />

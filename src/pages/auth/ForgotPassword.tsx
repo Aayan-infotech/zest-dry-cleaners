@@ -24,7 +24,7 @@ const ForgotPassword: React.FC = () => {
     }
     
     setError('');
-    navigate('/reset-email-sent', { state: { email } });
+    navigate('/otp-verification', { state: { email } });
   };
 
   return (

@@ -15,6 +15,7 @@ interface CustomTextFieldProps {
   borderColor?: string;
   labelColor?: string;
   textColor?: string;
+  error?: string;
 }
 
 const TextFieldComponent: React.FC<CustomTextFieldProps> = ({
@@ -30,6 +31,7 @@ const TextFieldComponent: React.FC<CustomTextFieldProps> = ({
   borderColor = "#336B3F",
   labelColor = "#336B3F",
   textColor = "#336B3F",
+  error,
 }) => {
   return (
     <TextField
@@ -41,6 +43,8 @@ const TextFieldComponent: React.FC<CustomTextFieldProps> = ({
       value={value}
       onChange={onChange}
       placeholder={placeholder}
+      error={!!error}
+      helperText={error}
       InputLabelProps={{ style: { color: labelColor } }}
       sx={{
         "& .MuiInputLabel-root": {
@@ -56,19 +60,22 @@ const TextFieldComponent: React.FC<CustomTextFieldProps> = ({
           background: "none !important",
           fontSize: { xs: "0.875rem", sm: "1rem" },
           "& fieldset": { 
-            borderColor: `${borderColor} !important`, 
+            borderColor: error ? `#d32f2f !important` : `${borderColor} !important`, 
             borderWidth: "2.5px !important",
             borderStyle: "solid !important",
           },
           "&:hover fieldset": { 
-            borderColor: `${borderColor} !important`, 
+            borderColor: error ? `#d32f2f !important` : `${borderColor} !important`, 
             borderWidth: "2.5px !important",
             borderStyle: "solid !important",
           },
           "&.Mui-focused fieldset": { 
-            borderColor: `${borderColor} !important`, 
+            borderColor: error ? `#d32f2f !important` : `${borderColor} !important`, 
             borderWidth: "3px !important",
             borderStyle: "solid !important",
+          },
+          "&.Mui-error fieldset": {
+            borderColor: "#d32f2f !important",
           },
           "&:hover": {
             backgroundColor: "transparent !important",
@@ -88,6 +95,11 @@ const TextFieldComponent: React.FC<CustomTextFieldProps> = ({
           color: textColor,
           backgroundColor: "transparent !important",
           background: "none !important",
+        },
+        "& .MuiFormHelperText-root": {
+          color: "#d32f2f",
+          fontSize: { xs: "0.75rem", sm: "0.875rem" },
+          marginLeft: 0,
         },
       }}
       InputProps={
