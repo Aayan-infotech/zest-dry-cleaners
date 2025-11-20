@@ -25,6 +25,14 @@ import PaymentIcon from "@mui/icons-material/Payment";
 import PhoneIcon from "@mui/icons-material/Phone";
 import LogoutIcon from "@mui/icons-material/Logout";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import EmailIcon from "@mui/icons-material/Email";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import MicNoneOutlinedIcon from "@mui/icons-material/MicNoneOutlined";
+import EmojiEmotionsOutlinedIcon from "@mui/icons-material/EmojiEmotionsOutlined";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import ArrowBackIosNewOutlinedIcon from "@mui/icons-material/ArrowBackIosNewOutlined";
 import { getCountries, getCountryCallingCode, getExampleNumber, parsePhoneNumber } from "libphonenumber-js";
 import examples from "libphonenumber-js/mobile/examples";
 
@@ -139,10 +147,13 @@ const EditProfile = () => {
   const [showLocationCard, setShowLocationCard] = useState(false);
   const [savedCards, setSavedCards] = useState<CardData[]>([]);
   const [savedLocations, setSavedLocations] = useState<LocationData[]>([]);
-  // Contact form state variables
-  const [contactSubject, setContactSubject] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactMessage, setContactMessage] = useState("");
+  const [supportView, setSupportView] = useState<"menu" | "chat" | "call" | "faq">("menu");
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState<
+    { id: string; from: "user" | "assistant"; text: string; time: string }[]>([
+    { id: "1", from: "user", text: "Hey, I need help !", time: "08:15 AM" },
+    { id: "2", from: "assistant", text: "Good morning ! How can I help?", time: "08:20 AM" },
+  ]);
   const [profileImage, setProfileImage] = useState<string | null>(
     "https://media.istockphoto.com/id/1437816897/photo/business-woman-manager-or-human-resources-portrait-for-career-success-company-we-are-hiring.jpg?s=612x612&w=0&k=20&c=tyLvtzutRh22j9GqSGI33Z4HpIwv9vL_MZw_xOE19NQ="
   );
@@ -232,7 +243,18 @@ const EditProfile = () => {
     setShowContactForm(true);
     setShowProfileEditForm(false);
     setShowPaymentCardForm(false);
+    setSupportView("menu");
   };
+  const handleSendChatMessage = () => {
+    if (!chatInput.trim()) return;
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    setChatMessages((prev) => [
+      ...prev,
+      { id: Date.now().toString(), from: "user", text: chatInput.trim(), time },
+    ]);
+    setChatInput("");
+  };
+
 
   const handleShowPaymentCard = () => {
     setShowPaymentCardForm(true);
@@ -460,49 +482,170 @@ const EditProfile = () => {
               )}
 
               {showContactForm && (
-                <Box component="form" onSubmit={(e) => {
-                  e.preventDefault();
-                  console.log({ contactSubject, contactEmail, contactMessage });
-                }} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  <Typography variant="h5" sx={{ color: "#C9F8BA", fontWeight: "bold", mb: 2 }}>
-                    Contact Us
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: "rgba(201, 248, 186, 0.7)", mb: 3 }}>
-                    Get help with your account or report an issue
-                  </Typography>
-                  <TextFieldComponent
-                    label="Subject"
-                    value={contactSubject}
-                    onChange={(e) => setContactSubject(e.target.value)}
-                    required
-                  />
-                  <TextFieldComponent
-                    label="Email Address"
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    type="email"
-                    required
-                  />
-                  <TextFieldComponent
-                    label="Message"
-                    value={contactMessage}
-                    onChange={(e) => setContactMessage(e.target.value)}
-                    required
-                    fullWidth
-                  />
-                  <Button
-                    type="submit"
-                    size="large"
-                    style={{
-                      backgroundColor: "#C9F8BA",
-                      border: "none",
-                      color: "#336B3F",
-                      borderRadius: "12px",
-                      fontWeight: "bold"
-                    }}
-                  >
-                    Send Message
-                  </Button>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {supportView === "menu" && (
+                    <>
+                      <Typography variant="h6" sx={{ color: "rgba(255, 255, 255, 0.5)", fontWeight: "bold", mb: 1 }}>
+                        Please choose what types of support do you need and let us know.
+                      </Typography>
+                      <Grid container spacing={2}>
+                        {[
+                          { title: "Support Chat", subtitle: "24x7 Online Support", color: "#336B3F", icon: <ChatBubbleOutlineIcon sx={{ color: "#C9F8BA", fontSize: 30 }} />, view: "chat" },
+                          { title: "Call Center", subtitle: "24x7 Customer Service", color: "#FF6B35", icon: <PhoneIcon sx={{ color: "white", fontSize: 30 }} />, view: "call" },
+                          { title: "Email", subtitle: "admin@shifty.com", color: "#9B59B6", icon: <EmailIcon sx={{ color: "white", fontSize: 30 }} />, view: "chat" },
+                          { title: "FAQ", subtitle: "+50 Answers", color: "#F1C40F", icon: <HelpOutlineIcon sx={{ color: "#336B3F", fontSize: 30 }} />, view: "faq" },
+                        ].map((card) => (
+                          <Grid key={card.title} size={6}>
+                            <Box
+                              onClick={() => setSupportView(card.view as any)}
+                              sx={{
+                                backgroundColor: "#C9F8BA",
+                                borderRadius: "16px",
+                                padding: "24px",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                textAlign: "center",
+                                cursor: "pointer",
+                                transition: "transform 0.2s",
+                                "&:hover": { transform: "scale(1.02)" },
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  width: 60,
+                                  height: 60,
+                                  borderRadius: "50%",
+                                  backgroundColor: card.color,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  mb: 2,
+                                }}
+                              >
+                                {card.icon}
+                              </Box>
+                              <Typography variant="h6" sx={{ color: "#336B3F", fontWeight: "bold", mb: 1 }}>
+                                {card.title}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: "#336B3F", opacity: 0.7 }}>
+                                {card.subtitle}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </>
+                  )}
+
+                  {supportView === "chat" && (
+                    <Box sx={{ backgroundColor: "#2F6B3C", borderRadius: "28px", overflow: "hidden", border:'1px solid #C9F8BA' }}>
+                      <Box sx={{ display: "flex", alignItems: "center", p: 2, borderBottom: "1px solid rgba(201, 248, 186, 0.2)" }}>
+                        <IconButton onClick={() => setSupportView("menu")} sx={{ color: "#C9F8BA", mr: 1 }}>
+                          <ArrowBackIosNewOutlinedIcon fontSize="small" />
+                        </IconButton>
+                        <Typography sx={{ flexGrow: 1, color: "#C9F8BA", fontWeight: "bold" }}>Assistant</Typography>
+                        <Typography sx={{ color: "rgba(201, 248, 186, 0.6)", fontSize: "0.85rem" }}>Online</Typography>
+                      </Box>
+                      <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2, minHeight: 450 }}>
+                        {chatMessages?.map((message) => (
+                          <Box
+                            key={message.id}
+                            sx={{
+                              alignSelf: message.from === "user" ? "flex-end" : "flex-start",
+                              backgroundColor: message.from === "user" ? "#C9F8BA" : "rgba(255,255,255,0.08)",
+                              color: message.from === "user" ? "#336B3F" : "rgba(201, 248, 186, 0.8)",
+                              px: 2.5,
+                              py: 1.5,
+                              borderRadius: "24px",
+                              maxWidth: "60%",
+                            }}
+                          >
+                            <Typography sx={{ fontSize: "0.95rem" }}>{message.text}</Typography>
+                            <Typography sx={{ fontSize: "0.7rem", opacity: 0.6, mt: 0.5, textAlign: "right" }}>
+                              {message.time}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                      <Box sx={{ backgroundColor: "#C9F8BA", display: "flex", alignItems: "center", gap: 1.5, p: 2 }}>
+                        <IconButton sx={{ color: "#336B3F" }}>
+                          <ImageOutlinedIcon />
+                        </IconButton>
+                        <IconButton sx={{ color: "#336B3F" }}>
+                          <MicNoneOutlinedIcon />
+                        </IconButton>
+                        <Box sx={{ flexGrow: 1, backgroundColor: "rgba(51, 107, 63, 0.1)", borderRadius: "24px", display: "flex", alignItems: "center", px: 2 }}>
+                          <input
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            placeholder="Aa"
+                            style={{ flexGrow: 1, border: "none", background: "transparent", outline: "none", color: "#336B3F", fontSize: "1rem" }}
+                          />
+                          <IconButton sx={{ color: "#336B3F" }}>
+                            <EmojiEmotionsOutlinedIcon />
+                          </IconButton>
+                        </Box>
+                        <IconButton
+                          onClick={handleSendChatMessage}
+                          sx={{ backgroundColor: "#336B3F", color: "#C9F8BA", "&:hover": { backgroundColor: "#285230" } }}
+                        >
+                          <SendRoundedIcon />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {supportView === "call" && (
+                    <Box sx={{ backgroundColor: "#2F6B3C", borderRadius: "28px", p: 4, color: "#C9F8BA" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", mb: 3, gap: 2 }}>
+                        <IconButton onClick={() => setSupportView("menu")} sx={{ color: "#C9F8BA" }}>
+                          <ArrowBackIosNewOutlinedIcon fontSize="small" />
+                        </IconButton>
+                        <Typography variant="h5" sx={{ fontWeight: "bold" }}>Call Center</Typography>
+                      </Box>
+                      <Typography variant="body1" sx={{ mb: 2 }}>
+                        Speak directly with our specialists for instant resolution.
+                      </Typography>
+                      <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
+                        <Button size="large" style={{ backgroundColor: "#C9F8BA", color: "#336B3F", borderRadius: "16px", fontWeight: "bold" }}>
+                          Call Now
+                        </Button>
+                        <Button size="large" style={{ backgroundColor: "transparent", border: "1px solid rgba(201,248,186,0.4)", color: "#C9F8BA", borderRadius: "16px" }}>
+                          Schedule Callback
+                        </Button>
+                      </Box>
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                        <Typography variant="body2">Hotline: +1 800 223 8899</Typography>
+                        <Typography variant="body2">Support PIN: 9835</Typography>
+                        <Typography variant="body2" sx={{ opacity: 0.7 }}>Average wait time: less than 2 mins</Typography>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {supportView === "faq" && (
+                    <Box sx={{ backgroundColor: "#2F6B3C", borderRadius: "28px", p: 4, color: "#C9F8BA" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", mb: 3, gap: 2 }}>
+                        <IconButton onClick={() => setSupportView("menu")} sx={{ color: "#C9F8BA" }}>
+                          <ArrowBackIosNewOutlinedIcon fontSize="small" />
+                        </IconButton>
+                        <Typography variant="h5" sx={{ fontWeight: "bold" }}>Frequently Asked Questions</Typography>
+                      </Box>
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        {[
+                          { q: "How do I reschedule my pickup?", a: "Go to Orders > Select order > Reschedule." },
+                          { q: "Where can I track my order?", a: "Open Order History and tap on the order status card." },
+                          { q: "How do I update my payment method?", a: "Navigate to Profile > Payment Method > Add card." },
+                          { q: "Do you offer express service?", a: "Yes, choose Express at checkout for next-day delivery." },
+                        ].map((faq) => (
+                          <Box key={faq.q} sx={{ backgroundColor: "rgba(201,248,186,0.1)", borderRadius: "20px", p: 3 }}>
+                            <Typography sx={{ fontWeight: "bold", mb: 1 }}>{faq.q}</Typography>
+                            <Typography sx={{ opacity: 0.8 }}>{faq.a}</Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
                 </Box>
               )}
               {showPaymentCardForm && (
@@ -672,7 +815,6 @@ const EditProfile = () => {
                           </Typography>
                         ) : (
                           savedLocations.map((location) => {
-                            // Encode address for URL
                             const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(
                               location.address
                             )}&zoom=15&size=400x150&markers=color:blue|label:H|${encodeURIComponent(location.address)}&key=${GOOGLE_MAPS_API_KEY}`;

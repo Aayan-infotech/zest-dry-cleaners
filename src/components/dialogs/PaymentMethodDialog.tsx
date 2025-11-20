@@ -6,6 +6,8 @@ import {
   IconButton,
   Typography,
   Box,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import TextFieldComponent from "../ui/TextField";
@@ -30,29 +32,34 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
   onClose,
   onAddCard,
 }) => {
+  const [activeTab, setActiveTab] = useState<"card" | "paypal">("card");
   const [cardNumber, setCardNumber] = useState("");
   const [cardHolderName, setCardHolderName] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [cvv, setCvv] = useState("");
+  const [paypalEmail, setPaypalEmail] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (onAddCard) {
-      const newCard: CardData = {
-        id: Date.now().toString(),
-        cardNumber,
-        cardHolderName,
-        expiryDate,
-        cvv,
-      };
-      onAddCard(newCard);
+    if (activeTab === "card") {
+      if (onAddCard) {
+        const newCard: CardData = {
+          id: Date.now().toString(),
+          cardNumber,
+          cardHolderName,
+          expiryDate,
+          cvv,
+        };
+        onAddCard(newCard);
+      }
+      setCardNumber("");
+      setCardHolderName("");
+      setExpiryDate("");
+      setCvv("");
+    } else {
+      console.log("Linked PayPal:", paypalEmail);
+      setPaypalEmail("");
     }
-    // Reset form
-    setCardNumber("");
-    setCardHolderName("");
-    setExpiryDate("");
-    setCvv("");
-    // Close dialog after submission
     onClose();
   };
 
@@ -109,54 +116,96 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
         </IconButton>
       </DialogTitle>
       <DialogContent>
-        <Typography variant="body2" sx={{ color: "rgba(51, 107, 63, 0.7)", mb: 3, }}>
-          Add credit & debit cards
-        </Typography>
+        <Tabs
+          value={activeTab}
+          onChange={(_, newValue) => setActiveTab(newValue)}
+          sx={{
+            "& .MuiTab-root": { color: "#336B3F", fontWeight: "bold" },
+            "& .Mui-selected": { color: "#336B3F !important" },
+            mb: 2,
+          }}
+        >
+          <Tab label="Credit Card" value="card" />
+          <Tab label="PayPal" value="paypal" />
+        </Tabs>
+        {activeTab === "card" ? (
+          <Typography variant="body2" sx={{ color: "rgba(51, 107, 63, 0.7)", mb: 3 }}>
+            Add credit & debit cards
+          </Typography>
+        ) : (
+          <Typography variant="body2" sx={{ color: "rgba(51, 107, 63, 0.7)", mb: 3 }}>
+            Link your PayPal account for faster checkout
+          </Typography>
+        )}
         <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <TextFieldComponent
-            label="Card Number"
-            value={cardNumber}
-            onChange={handleCardNumberChange}
-            placeholder="1234 5678 9012 3456"
-            borderColor="#336B3F"
-            labelColor="#336B3F"
-            textColor="#336B3F"
-            required
-          />
-          <TextFieldComponent 
-            label="Card Holder Name" 
-            value={cardHolderName} 
-            onChange={(e) => setCardHolderName(e.target.value)} 
-            borderColor="#336B3F"
-            labelColor="#336B3F"
-            textColor="#336B3F"
-            required 
-          />
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <TextFieldComponent 
-              label="Expiry Date" 
-              value={expiryDate} 
-              onChange={handleExpiryChange} 
-              placeholder="MM/YY" 
-              borderColor="#336B3F"
-              labelColor="#336B3F"
-              textColor="#336B3F"
-              required 
-            />
-            <TextFieldComponent 
-              label="CVV" 
-              value={cvv} 
-              onChange={handleCvvChange} 
-              placeholder="123" 
-              borderColor="#336B3F"
-              labelColor="#336B3F"
-              textColor="#336B3F"
-              required 
-            />
-          </Box>
-          <Button type="submit" variant="primary" size="large" style={{ backgroundColor: "#336B3F", color: "white", borderRadius: "12px", fontWeight: "bold", marginTop: 2, }}>
-            Add Card
-          </Button>
+          {activeTab === "card" ? (
+            <>
+              <TextFieldComponent
+                label="Card Number"
+                value={cardNumber}
+                onChange={handleCardNumberChange}
+                placeholder="1234 5678 9012 3456"
+                borderColor="#336B3F"
+                labelColor="#336B3F"
+                textColor="#336B3F"
+                required
+              />
+              <TextFieldComponent 
+                label="Card Holder Name" 
+                value={cardHolderName} 
+                onChange={(e) => setCardHolderName(e.target.value)} 
+                borderColor="#336B3F"
+                labelColor="#336B3F"
+                textColor="#336B3F"
+                required 
+              />
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <TextFieldComponent 
+                  label="Expiry Date" 
+                  value={expiryDate} 
+                  onChange={handleExpiryChange} 
+                  placeholder="MM/YY" 
+                  borderColor="#336B3F"
+                  labelColor="#336B3F"
+                  textColor="#336B3F"
+                  required 
+                />
+                <TextFieldComponent 
+                  label="CVV" 
+                  value={cvv} 
+                  onChange={handleCvvChange} 
+                  placeholder="123" 
+                  borderColor="#336B3F"
+                  labelColor="#336B3F"
+                  textColor="#336B3F"
+                  required 
+                />
+              </Box>
+              <Button type="submit" variant="primary" size="large" style={{ backgroundColor: "#336B3F", color: "white", borderRadius: "12px", fontWeight: "bold", marginTop: 2 }}>
+                Add Card
+              </Button>
+            </>
+          ) : (
+            <>
+              <TextFieldComponent
+                label="PayPal Email"
+                value={paypalEmail}
+                onChange={(e) => setPaypalEmail(e.target.value)}
+                type="email"
+                placeholder="you@example.com"
+                borderColor="#336B3F"
+                labelColor="#336B3F"
+                textColor="#336B3F"
+                required
+              />
+              <Typography variant="body2" sx={{ color: "rgba(51, 107, 63, 0.8)" }}>
+                We will redirect you to PayPal to confirm this account on your next checkout.
+              </Typography>
+              <Button type="submit" variant="primary" size="large" style={{ backgroundColor: "#336B3F", color: "white", borderRadius: "12px", fontWeight: "bold", marginTop: 2 }}>
+                Link PayPal
+              </Button>
+            </>
+          )}
         </Box>
       </DialogContent>
     </Dialog>
