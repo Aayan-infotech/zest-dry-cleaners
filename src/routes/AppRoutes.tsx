@@ -23,6 +23,7 @@ import TermsAndConditions from '../pages/TermsAndConditions';
 import OrderTracking from '../pages/OrderTracking';
 import EditProfile from '../pages/EditProfile';
 import Notifications from '../pages/Notifications';
+import Cart from '../pages/Cart';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -48,6 +49,7 @@ const AppRoutes: React.FC = () => {
         </Route>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/my-orders" element={<MyOrders />} />
+        <Route path="/cart" element={<Cart />} />
         <Route path="/services-list" element={<ServicesList />} />
         <Route path="/services/:id" element={<ServiceDetails />} />
         <Route path="/order-details/:id" element={<OrderDetails />} />

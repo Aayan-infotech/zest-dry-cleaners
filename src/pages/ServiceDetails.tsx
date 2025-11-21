@@ -230,7 +230,7 @@ const ServiceDetails: React.FC = () => {
 
           {/* Continue Button */}
           <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '32px', }} className="animate-fade-in">
-            <Button onClick={() => navigate('/dashboard')} variant="primary" type="submit" size="large" className="custom-button--green hover-lift button-pulse" sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { xs: '200px', md: '250px' } }}>
+            <Button onClick={() => navigate('/cart')} variant="primary" type="submit" size="large" className="custom-button--green hover-lift button-pulse" sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { xs: '200px', md: '250px' } }}>
               Continue
             </Button>
           </Box>

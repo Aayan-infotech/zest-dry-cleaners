@@ -2,6 +2,7 @@ import React from "react";
 import { Container, Box, Typography, Chip } from "@mui/material";
 import LocalLaundryServiceIcon from "@mui/icons-material/LocalLaundryService";
 import Button from "../../components/ui/Button";
+import { Link } from "react-router-dom";
 
 const OrderStatusSection: React.FC = () => {
   return (
@@ -31,9 +32,11 @@ const OrderStatusSection: React.FC = () => {
                   border: "1px solid rgba(51,107,63,0.25)",
                 }}
               />
-              <Button type="submit" variant="primary" size="large" className="w-100">
-                Track Order
-              </Button>
+              <Link to="/tracking">
+                <Button type="submit" variant="primary" size="large" className="w-100">
+                  Track Order
+                </Button>
+              </Link>
             </Box>
           </Box>
         </Box>
