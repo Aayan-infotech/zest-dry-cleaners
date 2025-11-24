@@ -25,12 +25,14 @@ interface PaymentMethodDialogProps {
   open: boolean;
   onClose: () => void;
   onAddCard?: (card: CardData) => void;
+  onPaymentComplete?: (card?: CardData) => void;
 }
 
 const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
   open,
   onClose,
   onAddCard,
+  onPaymentComplete,
 }) => {
   const [activeTab, setActiveTab] = useState<"card" | "paypal">("card");
   const [cardNumber, setCardNumber] = useState("");
@@ -51,6 +53,10 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
           cvv,
         };
         onAddCard(newCard);
+        // Call payment complete callback
+        if (onPaymentComplete) {
+          onPaymentComplete(newCard);
+        }
       }
       setCardNumber("");
       setCardHolderName("");
@@ -58,6 +64,10 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
       setCvv("");
     } else {
       console.log("Linked PayPal:", paypalEmail);
+      // Call payment complete callback for PayPal
+      if (onPaymentComplete) {
+        onPaymentComplete();
+      }
       setPaypalEmail("");
     }
     onClose();

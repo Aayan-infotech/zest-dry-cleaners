@@ -28,6 +28,8 @@ import RouteSelection from '../pages/RouteSelection';
 import LocationSelection from '../pages/LocationSelection';
 import DestinationSelection from '../pages/DestinationSelection';
 import Billing from '../pages/Billing';
+import OrderConfirmation from '../pages/OrderConfirmation';
+import EmployeeDashboard from '../pages/EmployeeDashboard';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -52,6 +54,8 @@ const AppRoutes: React.FC = () => {
           <Route path="welcome" element={<Welcome />} />
         </Route>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
+        <Route path="/order-confirmation" element={<OrderConfirmation />} />
         <Route path="/my-orders" element={<MyOrders />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/route-selection" element={<RouteSelection />} />
