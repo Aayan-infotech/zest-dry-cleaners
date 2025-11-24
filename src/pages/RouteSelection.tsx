@@ -117,7 +117,7 @@ const RouteSelection: React.FC = () => {
   useEffect(() => {
     if (!isLoaded || !mapRef.current || googleMapRef.current) return;
     
-    const initializeMap = () => {
+    const initializeMap = async () => {
       if (!mapRef.current || googleMapRef.current) return;
       
       // Ensure google.maps is available and fully loaded
@@ -132,7 +132,12 @@ const RouteSelection: React.FC = () => {
       }
 
       try {
-        const map = new window.google.maps.Map(mapRef.current, {
+        // Import the maps library to get the Map class
+        const { Map } = await window.google.maps.importLibrary('maps') as any;
+        
+        if (!mapRef.current) return;
+
+        const map = new Map(mapRef.current, {
           center: { lat: mapCenter.lat, lng: mapCenter.lng },
           zoom: 15,
           mapTypeId: window.google.maps.MapTypeId.ROADMAP,
@@ -280,7 +285,7 @@ const RouteSelection: React.FC = () => {
   const handleProceed = () => {
     // Save current addresses to sessionStorage before navigating
     sessionStorage.setItem("routeAddresses", JSON.stringify(addresses));
-    navigate("/location-selection");
+    navigate("/billing");
   };
 
   // Recenter map

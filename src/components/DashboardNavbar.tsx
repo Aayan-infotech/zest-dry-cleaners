@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppBar, Toolbar, Typography, Button, Box, Container, IconButton, Menu, MenuItem, Drawer, List, ListItem, ListItemText, Divider } from '@mui/material';
 import { Link } from 'react-router-dom';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -8,10 +8,14 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import './DashboardNavbar.css';
+import { getUserRole, isAuthenticated } from '../utils/auth';
+import { GOOGLE_MAPS_API_KEY } from '../utils/config';
 
 const DashboardNavbar: React.FC = () => {
   const [locationAnchor, setLocationAnchor] = useState<null | HTMLElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<string>('Loading...');
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const handleLocationClick = (event: React.MouseEvent<HTMLElement>) => {
     setLocationAnchor(event.currentTarget);
@@ -25,6 +29,74 @@ const DashboardNavbar: React.FC = () => {
     setMobileOpen(!mobileOpen);
   };
 
+  // Get user role on mount
+  useEffect(() => {
+    if (isAuthenticated()) {
+      setUserRole(getUserRole());
+    }
+  }, []);
+
+  // Get current location using geolocation API
+  useEffect(() => {
+    const getCurrentLocation = () => {
+      if (!navigator.geolocation) {
+        setCurrentLocation('Location not available');
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          // Reverse geocode to get address
+          try {
+            const response = await fetch(
+              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_MAPS_API_KEY}`
+            );
+            const data = await response.json();
+            
+            if (data.results && data.results.length > 0) {
+              const addressComponents = data.results[0].address_components;
+              let city = '';
+              let country = '';
+              
+              // Extract city and country from address components
+              for (const component of addressComponents) {
+                if (component.types.includes('locality') || component.types.includes('administrative_area_level_2')) {
+                  city = component.long_name;
+                }
+                if (component.types.includes('country')) {
+                  country = component.long_name;
+                }
+              }
+              
+              if (city && country) {
+                setCurrentLocation(`${city}, ${country}`);
+              } else if (city) {
+                setCurrentLocation(city);
+              } else if (country) {
+                setCurrentLocation(country);
+              } else {
+                setCurrentLocation('Location detected');
+              }
+            } else {
+              setCurrentLocation('Location not found');
+            }
+          } catch (error) {
+            console.error('Error reverse geocoding:', error);
+            setCurrentLocation('Location detected');
+          }
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          setCurrentLocation('Location unavailable');
+        }
+      );
+    };
+
+    getCurrentLocation();
+  }, []);
+
   const drawer = (
     <Box sx={{ width: 250, backgroundColor: '#336B3F', height: '100%', color: 'white' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
@@ -37,21 +109,34 @@ const DashboardNavbar: React.FC = () => {
       </Box>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.2)' }} />
       <List>
-        <ListItem component={Link} to="/dashboard" onClick={handleDrawerToggle} sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
-          <ListItemText primary="Dashboard" />
-        </ListItem>
-        <ListItem component={Link} to="/my-orders" onClick={handleDrawerToggle} sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
-          <ListItemText primary="My Orders" />
-        </ListItem>
-        <ListItem component={Link} to="/services-list" onClick={handleDrawerToggle} sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
-          <ListItemText primary="Services" />
-        </ListItem>
-        <ListItem component={Link} to="/terms" onClick={handleDrawerToggle} sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
-          <ListItemText primary="Terms & Conditions" />
-        </ListItem>
-        <ListItem component={Link} to="/privacy" onClick={handleDrawerToggle} sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
-          <ListItemText primary="Privacy Policy" />
-        </ListItem>
+        {userRole === 'employee' ? (
+          <>
+            <ListItem component={Link} to="/employee-dashboard" onClick={handleDrawerToggle} sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
+              <ListItemText primary="My Day" />
+            </ListItem>
+            <ListItem component={Link} to="/terms" onClick={handleDrawerToggle} sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
+              <ListItemText primary="Terms & Conditions" />
+            </ListItem>
+            <ListItem component={Link} to="/privacy" onClick={handleDrawerToggle} sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
+              <ListItemText primary="Privacy Policy" />
+            </ListItem>
+          </>
+        ) : (
+          <>
+            <ListItem component={Link} to="/my-orders" onClick={handleDrawerToggle} sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
+              <ListItemText primary="My Orders" />
+            </ListItem>
+            <ListItem component={Link} to="/services-list" onClick={handleDrawerToggle} sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
+              <ListItemText primary="Services" />
+            </ListItem>
+            <ListItem component={Link} to="/terms" onClick={handleDrawerToggle} sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
+              <ListItemText primary="Terms & Conditions" />
+            </ListItem>
+            <ListItem component={Link} to="/privacy" onClick={handleDrawerToggle} sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
+              <ListItemText primary="Privacy Policy" />
+            </ListItem>
+          </>
+        )}
       </List>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.2)' }} />
       <Box sx={{ p: 2 }}>
@@ -74,7 +159,7 @@ const DashboardNavbar: React.FC = () => {
         >
           <LocationOnIcon sx={{ fontSize: '24px' }} />
           <Typography sx={{ color: 'white', fontWeight: 400, fontSize: '1rem' }}>
-            Jakarta, Indonesia
+            {currentLocation}
           </Typography>
           <KeyboardArrowDownIcon sx={{ fontSize: '20px' }} />
         </Box>
@@ -140,66 +225,118 @@ const DashboardNavbar: React.FC = () => {
               </Typography>
             </Link>
             <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: { md: 2, lg: 3 }, alignItems: 'center' }}>
-              <Button
-                component={Link}
-                to="/my-orders"
-                color="inherit"
-                variant="text"
-                disableRipple
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 400,
-                  fontSize: { md: '0.9rem', lg: '1rem' },
-                  "&:hover": { backgroundColor: "transparent", textDecoration: "underline" },
-                }}
-              >
-                My Orders
-              </Button>
-              <Button
-                component={Link}
-                to="/services-list"
-                color="inherit"
-                variant="text"
-                disableRipple
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 400,
-                  fontSize: { md: '0.9rem', lg: '1rem' },
-                  "&:hover": { backgroundColor: "transparent", textDecoration: "underline" },
-                }}
-              >
-                Services
-              </Button>
-              <Button
-                component={Link}
-                to="/terms"
-                color="inherit"
-                variant="text"
-                disableRipple
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 400,
-                  fontSize: { md: '0.9rem', lg: '1rem' },
-                  "&:hover": { backgroundColor: "transparent", textDecoration: "underline" },
-                }}
-              >
-                Terms & Conditions
-              </Button>
-              <Button
-                component={Link}
-                to="/privacy"
-                color="inherit"
-                variant="text"
-                disableRipple
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 400,
-                  fontSize: { md: '0.9rem', lg: '1rem' },
-                  "&:hover": { backgroundColor: "transparent", textDecoration: "underline" },
-                }}
-              >
-                Privacy Policy
-              </Button>
+              {userRole === 'employee' ? (
+                <>
+                  <Button
+                    component={Link}
+                    to="/employee-dashboard"
+                    color="inherit"
+                    variant="text"
+                    disableRipple
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 400,
+                      fontSize: { md: '0.9rem', lg: '1rem' },
+                      "&:hover": { backgroundColor: "transparent", textDecoration: "underline" },
+                    }}
+                  >
+                    My Day
+                  </Button>
+                  <Button
+                    component={Link}
+                    to="/terms"
+                    color="inherit"
+                    variant="text"
+                    disableRipple
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 400,
+                      fontSize: { md: '0.9rem', lg: '1rem' },
+                      "&:hover": { backgroundColor: "transparent", textDecoration: "underline" },
+                    }}
+                  >
+                    Terms & Conditions
+                  </Button>
+                  <Button
+                    component={Link}
+                    to="/privacy"
+                    color="inherit"
+                    variant="text"
+                    disableRipple
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 400,
+                      fontSize: { md: '0.9rem', lg: '1rem' },
+                      "&:hover": { backgroundColor: "transparent", textDecoration: "underline" },
+                    }}
+                  >
+                    Privacy Policy
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    component={Link}
+                    to="/my-orders"
+                    color="inherit"
+                    variant="text"
+                    disableRipple
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 400,
+                      fontSize: { md: '0.9rem', lg: '1rem' },
+                      "&:hover": { backgroundColor: "transparent", textDecoration: "underline" },
+                    }}
+                  >
+                    My Orders
+                  </Button>
+                  <Button
+                    component={Link}
+                    to="/services-list"
+                    color="inherit"
+                    variant="text"
+                    disableRipple
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 400,
+                      fontSize: { md: '0.9rem', lg: '1rem' },
+                      "&:hover": { backgroundColor: "transparent", textDecoration: "underline" },
+                    }}
+                  >
+                    Services
+                  </Button>
+                  <Button
+                    component={Link}
+                    to="/terms"
+                    color="inherit"
+                    variant="text"
+                    disableRipple
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 400,
+                      fontSize: { md: '0.9rem', lg: '1rem' },
+                      "&:hover": { backgroundColor: "transparent", textDecoration: "underline" },
+                    }}
+                  >
+                    Terms & Conditions
+                  </Button>
+                  <Button
+                    component={Link}
+                    to="/privacy"
+                    color="inherit"
+                    variant="text"
+                    disableRipple
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 400,
+                      fontSize: { md: '0.9rem', lg: '1rem' },
+                      "&:hover": { backgroundColor: "transparent", textDecoration: "underline" },
+                    }}
+                  >
+                    Privacy Policy
+                  </Button>
+                </>
+              )}
             </Box>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1, md: 2 }, flexWrap: 'nowrap' }}>
@@ -218,7 +355,7 @@ const DashboardNavbar: React.FC = () => {
             >
               <LocationOnIcon sx={{ fontSize: { xs: '18px', sm: '20px', md: '24px' } }} />
               <Typography sx={{ color: 'white', fontWeight: 400, fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, display: { xs: 'none', sm: 'block' } }}>
-                Jakarta, Indonesia
+                {currentLocation}
               </Typography>
               <KeyboardArrowDownIcon sx={{ fontSize: { xs: '14px', sm: '16px', md: '20px' }, display: { xs: 'none', sm: 'block' } }} />
             </Box>
@@ -227,9 +364,7 @@ const DashboardNavbar: React.FC = () => {
               open={Boolean(locationAnchor)}
               onClose={handleLocationClose}
             >
-              <MenuItem onClick={handleLocationClose}>Jakarta, Indonesia</MenuItem>
-              <MenuItem onClick={handleLocationClose}>Bandung, Indonesia</MenuItem>
-              <MenuItem onClick={handleLocationClose}>Surabaya, Indonesia</MenuItem>
+              <MenuItem onClick={handleLocationClose}>{currentLocation}</MenuItem>
             </Menu>
             <IconButton
               component={Link}

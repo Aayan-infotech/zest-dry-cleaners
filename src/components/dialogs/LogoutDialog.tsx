@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -12,6 +12,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { Button } from "../ui";
 import { useNavigate } from "react-router-dom";
+import { logout } from "../../utils/auth";
 
 interface LogoutDialogProps {
   open: boolean;
@@ -23,17 +24,27 @@ const LogoutDialog: React.FC<LogoutDialogProps> = ({
   onClose,
 }) => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
-  const handleLogout = () => {
-    // Clear any user data, tokens, etc.
-    // localStorage.removeItem('token');
-    // localStorage.removeItem('user');
-    
-    // Navigate to home or sign in page
-    navigate('/signin');
-    
-    // Close dialog
-    onClose();
+  const handleLogout = async () => {
+    setLoading(true);
+    try {
+      // Call logout API and clear local cookies
+      await logout();
+      
+      // Navigate to sign in page
+      navigate('/signin');
+      
+      // Close dialog
+      onClose();
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if there's an error, navigate to sign in page
+      navigate('/signin');
+      onClose();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -120,6 +131,7 @@ const LogoutDialog: React.FC<LogoutDialogProps> = ({
             onClick={handleLogout}
             variant="primary"
             size="large"
+            disabled={loading}
             style={{
               backgroundColor: "#336B3F",
               color: "white",
@@ -128,7 +140,7 @@ const LogoutDialog: React.FC<LogoutDialogProps> = ({
               width: "100%"
             }}
           >
-            Logout
+            {loading ? 'Logging out...' : 'Logout'}
           </Button>
         </Box>
       </DialogActions>

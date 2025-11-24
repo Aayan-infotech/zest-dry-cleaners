@@ -25,12 +25,14 @@ interface PaymentMethodDialogProps {
   open: boolean;
   onClose: () => void;
   onAddCard?: (card: CardData) => void;
+  onPaymentComplete?: (card?: CardData) => void;
 }
 
 const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
   open,
   onClose,
   onAddCard,
+  onPaymentComplete,
 }) => {
   const [activeTab, setActiveTab] = useState<"card" | "paypal">("card");
   const [cardNumber, setCardNumber] = useState("");
@@ -51,6 +53,10 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
           cvv,
         };
         onAddCard(newCard);
+        // Call payment complete callback
+        if (onPaymentComplete) {
+          onPaymentComplete(newCard);
+        }
       }
       setCardNumber("");
       setCardHolderName("");
@@ -58,6 +64,10 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
       setCvv("");
     } else {
       console.log("Linked PayPal:", paypalEmail);
+      // Call payment complete callback for PayPal
+      if (onPaymentComplete) {
+        onPaymentComplete();
+      }
       setPaypalEmail("");
     }
     onClose();
@@ -97,10 +107,10 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      fullWidth 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
       maxWidth="sm"
       PaperProps={{
         sx: {
@@ -121,14 +131,41 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
           value={activeTab}
           onChange={(_, newValue) => setActiveTab(newValue)}
           sx={{
-            "& .MuiTab-root": { color: "#336B3F", fontWeight: "bold", fontSize: { xs: "0.875rem", sm: "1rem" } },
-            "& .Mui-selected": { color: "#336B3F !important" },
+            display: "flex",
+            justifyContent: "center",
+            fontWeight: "bold",
+            "& .MuiTabs-flexContainer": {
+              justifyContent: "center",
+            },
+            "& .MuiTab-root": {
+              color: "#336B3F",
+              fontWeight: "bold",
+              fontSize: { xs: "0.875rem", sm: "1rem" },
+              textTransform: "none",
+              borderRadius: "8px",
+              px: 2,
+              mr: 1,
+              minHeight: "38px",
+            },
+            "& .MuiTab-root.Mui-selected": {
+              backgroundColor: "#FFFFFF", 
+              color: "#336B3F !important",
+              borderRadius: "28px",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+            },
+
+            // Remove bottom bar
+            "& .MuiTabs-indicator": {
+              display: "none",
+            },
+
             mb: { xs: 1.5, sm: 2 },
           }}
         >
           <Tab label="Credit Card" value="card" />
           <Tab label="PayPal" value="paypal" />
         </Tabs>
+
         {activeTab === "card" ? (
           <Typography variant="body2" sx={{ color: "rgba(51, 107, 63, 0.7)", mb: { xs: 2, sm: 2.5, md: 3 }, fontSize: { xs: "0.8rem", sm: "0.875rem", md: "0.95rem" } }}>
             Add credit & debit cards
@@ -151,35 +188,35 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
                 textColor="#336B3F"
                 required
               />
-              <TextFieldComponent 
-                label="Card Holder Name" 
-                value={cardHolderName} 
-                onChange={(e) => setCardHolderName(e.target.value)} 
+              <TextFieldComponent
+                label="Card Holder Name"
+                value={cardHolderName}
+                onChange={(e) => setCardHolderName(e.target.value)}
                 borderColor="#336B3F"
                 labelColor="#336B3F"
                 textColor="#336B3F"
-                required 
+                required
               />
               <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: { xs: 2, sm: 2 } }}>
-                <TextFieldComponent 
-                  label="Expiry Date" 
-                  value={expiryDate} 
-                  onChange={handleExpiryChange} 
-                  placeholder="MM/YY" 
+                <TextFieldComponent
+                  label="Expiry Date"
+                  value={expiryDate}
+                  onChange={handleExpiryChange}
+                  placeholder="MM/YY"
                   borderColor="#336B3F"
                   labelColor="#336B3F"
                   textColor="#336B3F"
-                  required 
+                  required
                 />
-                <TextFieldComponent 
-                  label="CVV" 
-                  value={cvv} 
-                  onChange={handleCvvChange} 
-                  placeholder="123" 
+                <TextFieldComponent
+                  label="CVV"
+                  value={cvv}
+                  onChange={handleCvvChange}
+                  placeholder="123"
                   borderColor="#336B3F"
                   labelColor="#336B3F"
                   textColor="#336B3F"
-                  required 
+                  required
                 />
               </Box>
               <Button type="submit" variant="primary" size="large" style={{ backgroundColor: "#336B3F", color: "white", borderRadius: "12px", fontWeight: "bold", marginTop: 2 }}>

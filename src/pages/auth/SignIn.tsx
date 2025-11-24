@@ -3,27 +3,47 @@ import {
   Box,
   Container,
   Typography,
-  // Button,
   Checkbox,
   FormControlLabel,
   Paper,
   Divider,
+  Alert,
 } from "@mui/material";
 import GoogleIcon from "@mui/icons-material/Google";
 import { Link, useNavigate } from "react-router-dom";
 import TextFieldComponent from '../../components/ui/TextField';
 import Button from "../../components/ui/Button";
+import Loader from "../../components/ui/Loader";
+import { login } from "../../utils/auth";
 
 const SignIn: React.FC = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("hannah.turin@email.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("user");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Email:", email, "Password:", password);
-    navigate("/dashboard");
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await login(email, password, role);
+      
+      // Navigate based on role from API response (role is at top level, not in user object)
+      if (response.role === "employee") {
+        navigate("/employee-dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (err: any) {
+      setError(err.message || "Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,6 +59,108 @@ const SignIn: React.FC = () => {
 
           {/* Form */}
           <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: { xs: 2, sm: 3 } }}>
+            {error && (
+              <Alert severity="error" sx={{ mb: 1 }}>
+                {error}
+              </Alert>
+            )}
+
+            {/* Role Selection - Styled like Address Radio Buttons */}
+            <Box>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                  gap: 2,
+                }}
+              >
+                <Box
+                  onClick={() => setRole("user")}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    backgroundColor: "rgba(201, 248, 186, 1)",
+                    borderRadius: 2,
+                    p: 1.5,
+                    cursor: "pointer",
+                    border: role === "user" ? "2px solid #336B3F" : "2px solid transparent",
+                  }}
+                >
+                  {/* Radio button indicator */}
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      border: "2px solid #336B3F",
+                      backgroundColor: role === "user" ? "#336B3F" : "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mr: 1.5,
+                    }}
+                  >
+                    {role === "user" && (
+                      <Box
+                        sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          backgroundColor: "#fff",
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <Typography sx={{ color: "#336B3F", fontWeight: 500 }}>
+                    User
+                  </Typography>
+                </Box>
+
+                <Box
+                  onClick={() => setRole("employee")}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    backgroundColor: "rgba(201, 248, 186, 1)",
+                    borderRadius: 2,
+                    p: 1.5,
+                    cursor: "pointer",
+                    border: role === "employee" ? "2px solid #336B3F" : "2px solid transparent",
+                  }}
+                >
+                  {/* Radio button indicator */}
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      border: "2px solid #336B3F",
+                      backgroundColor: role === "employee" ? "#336B3F" : "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mr: 1.5,
+                    }}
+                  >
+                    {role === "employee" && (
+                      <Box
+                        sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          backgroundColor: "#fff",
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <Typography sx={{ color: "#336B3F", fontWeight: 500 }}>
+                    Employee
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+
+
             <TextFieldComponent label="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
             <TextFieldComponent
               label="Password"
@@ -49,13 +171,13 @@ const SignIn: React.FC = () => {
               toggleShowPassword={() => setShowPassword(!showPassword)}
               required
             />
-            <Box sx={{ 
-              display: "flex", 
+            <Box sx={{
+              display: "flex",
               flexDirection: { xs: "column", sm: "row" },
-              justifyContent: "space-between", 
-              alignItems: { xs: "flex-start", sm: "center" }, 
+              justifyContent: "space-between",
+              alignItems: { xs: "flex-start", sm: "center" },
               gap: { xs: 1, sm: 0 },
-              color: "#336B3F", 
+              color: "#336B3F",
               mt: { xs: 0, sm: 1 },
             }}>
               <FormControlLabel
@@ -69,8 +191,28 @@ const SignIn: React.FC = () => {
               </Link>
             </Box>
 
-            <Button type="submit" variant="primary" size="large" className="w-full" style={{ width: "100%" }}>
-              Login
+            <Button
+              type="submit"
+              variant="primary"
+              size="large"
+              className="w-full"
+              style={{ 
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+              }}
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader size={20} color="#fff" />
+                  <span>Logging in...</span>
+                </>
+              ) : (
+                "Login"
+              )}
             </Button>
           </Box>
         </Paper>
