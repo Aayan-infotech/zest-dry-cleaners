@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Container,
@@ -17,6 +17,7 @@ import Button from "../../components/ui/Button";
 import Select from "../../components/ui/Select";
 import { Link, useNavigate } from "react-router-dom";
 import { signup } from "../../utils/auth";
+import { ArrowBack } from "@mui/icons-material";
 
 const indianStates = [
   { value: "NY", label: "New York" },
@@ -33,91 +34,221 @@ const addressTypes = [
   { value: "Other", label: "Other" },
 ];
 
+interface FormDataState {
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  countryCode: string;
+  password: string;
+  confirmPassword: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  houseNumber: string;
+  streetName: string;
+  area: string;
+  landmark: string;
+  addressType: string;
+  profileImage: File | null;
+  latitude: string;
+  longitude: string;
+}
+
 const GettingStarted: React.FC = () => {
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [countryCode, setCountryCode] = useState("us");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [zipCode, setZipCode] = useState("");
-  const [houseNumber, setHouseNumber] = useState("");
-  const [streetName, setStreetName] = useState("");
-  const [area, setArea] = useState("");
-  const [landmark, setLandmark] = useState("");
-  const [addressType, setAddressType] = useState("Work");
-  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [formData, setFormData] = useState<FormDataState>({
+    fullName: "",
+    email: "",
+    phoneNumber: "",
+    countryCode: "us",
+    password: "",
+    confirmPassword: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    houseNumber: "",
+    streetName: "",
+    area: "",
+    landmark: "",
+    addressType: "Work",
+    profileImage: null,
+    latitude: "",
+    longitude: "",
+  });
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [signupStep, setSignupStep] = useState(1);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setFormData((prev) => ({
+            ...prev,
+            latitude: position.coords.latitude.toString(),
+            longitude: position.coords.longitude.toString(),
+          }));
+        },
+        (err) => {
+          console.warn("Geolocation not available:", err);
+        }
+      );
+    }
+  }, []);
+
+  const handleChange = (field: keyof FormDataState) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    if (error) setError("");
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFormData((prev) => ({ ...prev, profileImage: e.target.files![0] }));
+      if (error) setError("");
+    }
+  };
+
+  const handlePhoneChange = (value: string, country: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      phoneNumber: value,
+      countryCode: country?.countryCode?.toLowerCase() || "us",
+    }));
+    if (error) setError("");
+  };
+
+  const handleSelectChange = (field: keyof FormDataState) => (e: { target: { value: string } }) => {
+    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    if (error) setError("");
+  };
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateStep1 = (): string | null => {
+    const { fullName, email, phoneNumber, password, confirmPassword, addressType } = formData;
+
+    if (!fullName.trim()) return "Full Name is required";
+    if (!email.trim()) return "Email Address is required";
+    if (!validateEmail(email)) return "Please enter a valid email address";
+    if (!phoneNumber.trim()) return "Phone Number is required";
+    if (!addressType.trim()) return "Address Type is required";
+    if (!password.trim()) return "Password is required";
+    if (!confirmPassword.trim()) return "Confirm Password is required";
+    if (password !== confirmPassword) return "Passwords do not match";
+    if (password.length < 6) return "Password must be at least 6 characters";
+
+    return null;
+  };
+
+  const validateStep2 = (): string | null => {
+    const { houseNumber, streetName, area, city, state, zipCode } = formData;
+
+    if (!houseNumber.trim()) return "House Number is required";
+    if (!streetName.trim()) return "Street Name is required";
+    if (!area.trim()) return "Area is required";
+    if (!city.trim()) return "City is required";
+    if (!state.trim()) return "State is required";
+    if (!zipCode.trim()) return "Zip Code is required";
+
+    return null;
+  };
+
+  const handleNextStep = () => {
+    setError("");
+    const stepError = validateStep1();
+    if (stepError) {
+      setError(stepError);
+      return;
+    }
+    setSignupStep(2);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess(false);
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-
+    const step2Error = validateStep2();
+    if (step2Error) { setError(step2Error); return; }
+    const step1Error = validateStep1();
+    if (step1Error) { setError(step1Error); return; }
     setLoading(true);
-
     try {
-      // Extract national number (without country code) from phone number
-      let nationalPhoneNumber = phoneNumber;
+      let nationalPhoneNumber = formData.phoneNumber;
       try {
-        if (phoneNumber) {
-          // PhoneInput returns number with country code but without + prefix
-          // Add + prefix for parsePhoneNumber to work correctly
-          const phoneWithPlus = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        if (formData.phoneNumber) {
+          const phoneWithPlus = formData.phoneNumber.startsWith("+") ? formData.phoneNumber : `+${formData.phoneNumber}`;
           const parsed = parsePhoneNumber(phoneWithPlus);
           if (parsed) {
             nationalPhoneNumber = parsed.nationalNumber;
           }
         }
       } catch (err) {
-        // If parsing fails, the phone number might be invalid
-        // Set error and return early
         setError("Please enter a valid phone number");
         setLoading(false);
         return;
       }
+      // const submitFormData = new FormData();
+      // submitFormData.append("fullName", formData.fullName);
+      // submitFormData.append("email", formData.email);
+      // submitFormData.append("phoneNumber", nationalPhoneNumber);
+      // submitFormData.append("password", formData.password);
+      // submitFormData.append("city", formData.city);
+      // submitFormData.append("state", formData.state);
+      // submitFormData.append("zipCode", formData.zipCode);
+      // submitFormData.append("houseNumber", formData.houseNumber);
+      // submitFormData.append("streetName", formData.streetName);
+      // submitFormData.append("area", formData.area);
+      // submitFormData.append("landmark", formData.landmark);
+      // submitFormData.append("addressType", formData.addressType);
+      // if (formData.profileImage) {
+      //   submitFormData.append("profileImage", formData.profileImage);
+      // }
+      // navigator.geolocation.getCurrentPosition(
+      //   (position) => {
+      //     const { latitude, longitude } = position.coords;
+      //     submitFormData.append("latitude", latitude.toString());
+      //     submitFormData.append("longitude", longitude.toString());
+      //   },
+      //   (err) => console.error(err)
+      // );
+      const submitFormData = new FormData();
+      Object.entries({
+        fullName: formData.fullName,
+        email: formData.email,
+        phoneNumber: nationalPhoneNumber,
+        password: formData.password,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        houseNumber: formData.houseNumber,
+        streetName: formData.streetName,
+        area: formData.area,
+        landmark: formData.landmark,
+        addressType: formData.addressType,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+      }).forEach(([key, value]) => submitFormData.append(key, value as string));
 
-      const formData = new FormData();
-      formData.append("fullName", fullName);
-      formData.append("email", email);
-      formData.append("phoneNumber", nationalPhoneNumber);
-      formData.append("password", password);
-      formData.append("city", city);
-      formData.append("state", state);
-      formData.append("zipCode", zipCode);
-      formData.append("houseNumber", houseNumber);
-      formData.append("streetName", streetName);
-      formData.append("area", area);
-      formData.append("landmark", landmark);
-      formData.append("addressType", addressType);
-      
-      if (profileImage) {
-        formData.append("profileImage", profileImage);
-      }
-
-      await signup(formData);
+      if (formData.profileImage) submitFormData.append("profileImage", formData.profileImage);
+      await signup(submitFormData);
       setSuccess(true);
+      // Redirect to OTP verification with phone number
       setTimeout(() => {
-        navigate("/signin");
-      }, 2000);
+        navigate("/otp-verification", {
+          state: {
+            phoneNumber: nationalPhoneNumber,
+            fromSignup: true,
+          },
+        });
+      }, 1500);
     } catch (err: any) {
       setError(err.message || "Signup failed. Please try again.");
     } finally {
@@ -148,172 +279,206 @@ const GettingStarted: React.FC = () => {
               </Alert>
             )}
 
-            <Grid container spacing={{ xs: 2, sm: 3 }}>
-              {/* Row 1: Full Name | Email Address */}
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextFieldComponent label="Full Name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextFieldComponent label="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
-              </Grid>
+            {signupStep === 1 && (
+              <Grid container spacing={{ xs: 2, sm: 3 }}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextFieldComponent label="Full Name" value={formData.fullName} onChange={handleChange("fullName")} required />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextFieldComponent
+                    label="Email Address"
+                    value={formData.email}
+                    onChange={handleChange("email")}
+                    type="email"
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Box sx={{ textAlign: "start" }}>
+                    <PhoneInput
+                      country={formData.countryCode}
+                      value={formData.phoneNumber}
+                      onChange={handlePhoneChange}
+                      inputStyle={{
+                        width: "100%",
+                        height: "56px",
+                        borderRadius: "14px",
+                        border: "2.5px solid #336B3F",
+                        fontSize: "1rem",
+                        color: "#336B3F",
+                        backgroundColor: "transparent",
+                        paddingLeft: "48px",
+                      }}
+                      buttonStyle={{
+                        border: "none",
+                        background: "transparent",
+                        borderRight: "2.5px solid #336B3F",
+                        borderRadius: "14px 0 0 14px",
+                      }}
+                      dropdownStyle={{
+                        borderRadius: "10px",
+                      }}
+                      containerStyle={{
+                        width: "100%",
+                      }}
+                    />
+                  </Box>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }} sx={{ textAlign: "start" }}>
+                  <Select
+                    label="Address Type"
+                    options={addressTypes}
+                    value={formData.addressType}
+                    onChange={handleSelectChange("addressType")}
+                    placeholder="Select Address Type"
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextFieldComponent
+                    label="Password"
+                    value={formData.password}
+                    onChange={handleChange("password")}
+                    type="password"
+                    showPassword={showPassword}
+                    toggleShowPassword={() => setShowPassword(!showPassword)}
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextFieldComponent
+                    label="Confirm Password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange("confirmPassword")}
+                    type="password"
+                    showPassword={showConfirmPassword}
+                    toggleShowPassword={() => setShowConfirmPassword(!showConfirmPassword)}
+                    required
+                  />
+                </Grid>
 
-              {/* Row 2: Phone Number */}
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Box sx={{textAlign: "start"}}>
-                  <PhoneInput
-                    country={countryCode}
-                    value={phoneNumber}
-                    onChange={(value, country) => {
-                      setPhoneNumber(value);
-                      if (country && 'countryCode' in country) {
-                        setCountryCode(country.countryCode.toLowerCase());
+                <Grid size={{ xs: 12 }}>
+                  <Button onClick={handleNextStep} type="button" variant="primary" size="large" className="w-full" style={{ width: "100%" }}>
+                    Next
+                  </Button>
+                </Grid>
+              </Grid>
+            )}
+            {signupStep === 2 && (
+              <Grid container spacing={{ xs: 2, sm: 3 }}>
+                <Grid size={{ xs: 12 }}>
+                  <Box sx={{ display: "flex", justifyContent: "flex-end", cursor: "pointer", alignItems: "center", color: "#336B3F", fontWeight: 600 }} onClick={() => setSignupStep(1)}>
+                    <ArrowBack sx={{ mr: 0.5 }} />
+                    <Typography>Back</Typography>
+                  </Box>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography sx={{ color: "#336B3F", fontWeight: 600, textAlign: "left" }}>Address Details</Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextFieldComponent
+                    label="House Number"
+                    value={formData.houseNumber}
+                    onChange={handleChange("houseNumber")}
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextFieldComponent
+                    label="Street Name"
+                    value={formData.streetName}
+                    onChange={handleChange("streetName")}
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextFieldComponent
+                    label="Area"
+                    value={formData.area}
+                    onChange={handleChange("area")}
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextFieldComponent
+                    label="Landmark"
+                    value={formData.landmark}
+                    onChange={handleChange("landmark")}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextFieldComponent
+                    label="City"
+                    value={formData.city}
+                    onChange={handleChange("city")}
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }} sx={{ textAlign: "start" }}>
+                  <Select
+                    label="State"
+                    options={indianStates}
+                    value={formData.state}
+                    onChange={handleSelectChange("state")}
+                    placeholder="Select State"
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextFieldComponent
+                    label="Zip Code"
+                    value={formData.zipCode}
+                    onChange={handleChange("zipCode")}
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Box>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      style={{
+                        width: "100%",
+                        padding: "8px",
+                        border: "2px solid #29753aff",
+                        borderRadius: "10px",
+                        color: "#336B3F",
+                      }}
+                    />
+                  </Box>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Box sx={{ display: "flex", justifyContent: "flex-start", alignItems: "flex-start", color: "#336B3F", mt: { xs: 0, sm: 1 }, }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          defaultChecked
+                          sx={{
+                            color: "#336B3F",
+                            "&.Mui-checked": { color: "#336B3F" },
+                          }}
+                        />
                       }
-                    }}
-                    inputStyle={{
-                      width: '100%',
-                      height: '56px',
-                      borderRadius: '14px',
-                      border: '2.5px solid #336B3F',
-                      fontSize: '1rem',
-                      color: '#336B3F',
-                      backgroundColor: 'transparent',
-                      paddingLeft: '48px',
-                    }}
-                    buttonStyle={{
-                      border: 'none',
-                      background: 'transparent',
-                      borderRight: '2.5px solid #336B3F',
-                      borderRadius: '14px 0 0 14px',
-                    }}
-                    dropdownStyle={{
-                      borderRadius: '10px',
-                    }}
-                    containerStyle={{
-                      width: '100%',
-                    }}
-                  />
-                </Box>
+                      label={<Typography sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem", md: "0.95rem" }, textAlign: "left" }}>By creating an account, you agree to our Terms and Conditions</Typography>}
+                    />
+                  </Box>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="large"
+                    className="w-full"
+                    style={{ width: "100%" }}
+                    disabled={loading}
+                  >
+                    {loading ? "Creating Account..." : "Submit"}
+                  </Button>
+                </Grid>
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                {/* Empty space for alignment */}
-              </Grid>
-            
-              {/* Row 3: Address Details Header */}
-              <Grid size={{ xs: 12 }}>
-                <Typography sx={{ color: "#336B3F", fontWeight: 600, textAlign: "left" }}>Address Details</Typography>
-              </Grid>
-            
-              {/* Row 4: House Number | Street Name */}
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextFieldComponent label="House Number" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} required />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextFieldComponent label="Street Name" value={streetName} onChange={(e) => setStreetName(e.target.value)} required />
-              </Grid>
-            
-              {/* Row 5: Area | Landmark */}
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextFieldComponent label="Area" value={area} onChange={(e) => setArea(e.target.value)} required />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextFieldComponent label="Landmark" value={landmark} onChange={(e) => setLandmark(e.target.value)} />
-              </Grid>
-            
-              {/* Row 6: City | State */}
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextFieldComponent label="City" value={city} onChange={(e) => setCity(e.target.value)} required />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }} sx={{textAlign: "start"}}>
-                <Select label="State" options={indianStates} value={state} onChange={(e) => setState(e.target.value)} placeholder="Select State" required />
-              </Grid>
-            
-              {/* Row 7: Zip Code | Address Type */}
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextFieldComponent label="Zip Code" value={zipCode} onChange={(e) => setZipCode(e.target.value)} required />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }} sx={{textAlign: "start"}}>
-                <Select label="Address Type" options={addressTypes} value={addressType} onChange={(e) => setAddressType(e.target.value)} placeholder="Select Address Type" required />
-              </Grid>
-            
-              {/* Row 8: Profile Image (Full Width) */}
-              <Grid size={{ xs: 12 }}>
-                <Box>
-                  <Typography sx={{ color: "#336B3F", mb: 1, fontSize: "0.9rem", textAlign: "left" }}>Profile Image (Optional)</Typography>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setProfileImage(e.target.files[0]);
-                      }
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #336B3F",
-                      borderRadius: "4px",
-                      color: "#336B3F",
-                    }}
-                  />
-                </Box>
-              </Grid>
-            
-              {/* Row 10: Password | Confirm Password */}
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextFieldComponent
-                  label="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  type="password"
-                  showPassword={showPassword}
-                  toggleShowPassword={() => setShowPassword(!showPassword)}
-                  required
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextFieldComponent
-                  label="Confirm Password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  type="password"
-                  showPassword={showConfirmPassword}
-                  toggleShowPassword={() => setShowConfirmPassword(!showConfirmPassword)}
-                  required
-                />
-              </Grid>
-            
-              {/* Row 11: Terms Checkbox (Full Width) */}
-              <Grid size={{ xs: 12 }}>
-                <Box sx={{ display: "flex", justifyContent: "flex-start", alignItems: "flex-start", color: "#336B3F", mt: { xs: 0, sm: 1 }, }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        defaultChecked
-                        sx={{
-                          color: "#336B3F",
-                          "&.Mui-checked": { color: "#336B3F" },
-                        }}
-                      />
-                    }
-                    label={<Typography sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem", md: "0.95rem" }, textAlign: "left" }}>By creating an account, you agree to our Terms and Conditions</Typography>}
-                  />
-                </Box>
-              </Grid>
+            )}
 
-              {/* Row 12: Submit Button (Full Width) */}
-              <Grid size={{ xs: 12 }}>
-                <Button 
-                  type="submit" 
-                  variant="primary" 
-                  size="large" 
-                  className="w-full" 
-                  style={{ width: "100%" }}
-                  disabled={loading}
-                >
-                  {loading ? "Creating Account..." : "Submit"}
-                </Button>
-              </Grid>
-            </Grid>
           </Box>
 
         </Paper>

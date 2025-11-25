@@ -1,15 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Box, Container, Typography, Button, TextField } from '@mui/material';
+import { Box, Container, Typography, Button, TextField, Alert } from '@mui/material';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowBack } from '@mui/icons-material';
+import { verifyOTP, resendOTP } from '../../utils/auth';
 import './Auth.css';
 
 const OTPVerification: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const email = location.state?.email || 'your email';
+  const { phoneNumber, fromSignup } = location.state || {};
+  
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -46,6 +50,7 @@ const OTPVerification: React.FC = () => {
     newOtp[index] = value;
     setOtp(newOtp);
     setError('');
+    setSuccess('');
 
     // Auto-focus next input
     if (value && index < otp.length - 1) {
@@ -69,12 +74,13 @@ const OTPVerification: React.FC = () => {
       const newOtp = [...digits];
       setOtp(newOtp);
       setError('');
+      setSuccess('');
       // Focus last input
       inputRefs.current[otp.length - 1]?.focus();
     }
   };
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     const otpString = otp.join('');
 
@@ -83,23 +89,68 @@ const OTPVerification: React.FC = () => {
       return;
     }
 
-    // Here you would verify the OTP with your backend
-    // For now, we'll just navigate to set new password
+    if (!phoneNumber) {
+      setError('Phone number is required');
+      return;
+    }
+
     setError('');
-    navigate('/set-new-password', { state: { email, otp: otpString } });
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      await verifyOTP({ phoneNumber, otp: otpString });
+      setSuccess('OTP verified successfully!');
+      
+      // Redirect based on context
+      setTimeout(() => {
+        if (fromSignup) {
+          navigate('/signin');
+        } else {
+          navigate('/set-new-password', { state: { phoneNumber, otp: otpString } });
+        }
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'OTP verification failed. Please try again.');
+      setOtp(['', '', '', '', '', '']);
+      if (inputRefs.current[0]) {
+        inputRefs.current[0].focus();
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
+    if (!phoneNumber) {
+      setError('Phone number is required');
+      return;
+    }
+
     setOtp(['', '', '', '', '', '']);
     setError('');
+    setSuccess('');
     setTimer(60);
     setCanResend(false);
+    
     // Focus first input
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
     }
-    // Here you would call your API to resend OTP
-    console.log('Resending OTP to:', email);
+
+    try {
+      await resendOTP({ phoneNumber });
+      setSuccess('OTP has been resent successfully!');
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend OTP. Please try again.');
+    }
+  };
+
+  const getBackRoute = () => {
+    if (fromSignup) {
+      return '/signup';
+    }
+    return '/forgot-password';
   };
 
   return (
@@ -115,7 +166,7 @@ const OTPVerification: React.FC = () => {
         }}>
           <Button
             startIcon={<ArrowBack />}
-            onClick={() => navigate('/forgot-password')}
+            onClick={() => navigate(getBackRoute())}
             sx={{ 
               mb: { xs: 2, sm: 3 }, 
               color: '#336B3F', 
@@ -133,12 +184,13 @@ const OTPVerification: React.FC = () => {
               sx={{ 
                 fontWeight: 700, 
                 color: '#336B3F', 
-                mb: 1,
+                mb: 2,
                 fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
               }}
             >
               Enter OTP
             </Typography>
+
             <Typography 
               variant="body2" 
               sx={{ 
@@ -161,11 +213,22 @@ const OTPVerification: React.FC = () => {
                 mb: { xs: 3, sm: 4 }
               }}
             >
-              {email}
+              {phoneNumber || 'your phone number'}
             </Typography>
           </Box>
 
           <Box component="form" onSubmit={handleVerify} sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2.5, sm: 3 } }}>
+            {error && (
+              <Alert severity="error" sx={{ mb: 1 }}>
+                {error}
+              </Alert>
+            )}
+            {success && (
+              <Alert severity="success" sx={{ mb: 1 }}>
+                {success}
+              </Alert>
+            )}
+
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: { xs: 1, sm: 1.5 }, mb: 1 }}>
               {otp.map((digit, index) => (
                 <TextField
@@ -175,6 +238,7 @@ const OTPVerification: React.FC = () => {
                   onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={handlePaste}
+                  disabled={loading}
                   inputProps={{
                     maxLength: 1,
                     style: {
@@ -199,6 +263,9 @@ const OTPVerification: React.FC = () => {
                         borderColor: '#336B3F',
                         borderWidth: '3px',
                       },
+                      '&.Mui-disabled': {
+                        backgroundColor: 'rgba(51, 107, 63, 0.05)',
+                      },
                     },
                     '& .MuiOutlinedInput-input': {
                       color: '#336B3F',
@@ -210,23 +277,11 @@ const OTPVerification: React.FC = () => {
               ))}
             </Box>
 
-            {error && (
-              <Typography 
-                sx={{ 
-                  color: '#d32f2f', 
-                  fontSize: { xs: '0.875rem', sm: '0.9rem' },
-                  textAlign: 'center',
-                  mt: -1
-                }}
-              >
-                {error}
-              </Typography>
-            )}
-
             <Button
               type="submit"
               variant="contained"
               fullWidth
+              disabled={loading}
               sx={{
                 backgroundColor: '#336B3F',
                 color: 'white',
@@ -238,15 +293,19 @@ const OTPVerification: React.FC = () => {
                 '&:hover': {
                   backgroundColor: '#285C34',
                 },
+                '&:disabled': {
+                  backgroundColor: 'rgba(51, 107, 63, 0.5)',
+                },
               }}
             >
-              Verify OTP
+              {loading ? 'Verifying...' : 'Verify OTP'}
             </Button>
 
-            <Box sx={{ textAlign: 'center', mt: { xs: 1, sm: 1.5 } }}>
+            <Box sx={{ textAlign: 'center' }}>
               {canResend ? (
                 <Button
                   onClick={handleResend}
+                  disabled={loading}
                   sx={{
                     color: '#336B3F',
                     textTransform: 'none',
@@ -254,6 +313,9 @@ const OTPVerification: React.FC = () => {
                     fontWeight: 600,
                     '&:hover': {
                       backgroundColor: 'rgba(51, 107, 63, 0.1)',
+                    },
+                    '&:disabled': {
+                      color: 'rgba(51, 107, 63, 0.5)',
                     },
                   }}
                 >
@@ -272,19 +334,21 @@ const OTPVerification: React.FC = () => {
               )}
             </Box>
 
-            <Box sx={{ textAlign: 'center', mt: { xs: 1.5, sm: 2 } }}>
-              <Link
-                to="/signin"
-                style={{
-                  color: '#336B3F',
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  fontSize: '0.875rem',
-                }}
-              >
-                Remember your password? Sign In
-              </Link>
-            </Box>
+            {fromSignup && (
+              <Box sx={{ textAlign: 'center' }}>
+                <Link
+                  to="/signin"
+                  style={{
+                    color: '#336B3F',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  Already verified? Sign In
+                </Link>
+              </Box>
+            )}
           </Box>
         </Box>
       </Container>
@@ -293,4 +357,3 @@ const OTPVerification: React.FC = () => {
 };
 
 export default OTPVerification;
-
