@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -8,7 +8,7 @@ import Group from '../../assets/Group.png';
 import blanket from '../../assets/blanket 1.png';
 import curtains from '../../assets/curtains 1.png';
 import { CircularProgress, Container } from '@mui/material';
-import { getAllCategoryServices } from '../../utils/auth';
+import { useCategoryServices } from '../../hooks/useCategoryServices';
 
 interface Service {
   id: number;
@@ -55,31 +55,15 @@ const staticServices: Service[] = [
 ];
 
 const ServicesSection: React.FC = () => {
-  const [services, setServices] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
   const navigate = useNavigate();
+  const { categories, loading, error } = useCategoryServices();
 
-  const fetchCategoryServices = async () => {
-    try {
-      setLoading(true);
-      const data = await getAllCategoryServices();
-      const categories = data?.categories || [];
-      const mergedServices = categories.map((cat: any, index: number) => ({
-        ...cat,
-        ...staticServices[index % staticServices.length],
-      }));
-      setServices(mergedServices);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch services');
-    } finally {
-      setLoading(false);
-    }
-  };
-  useEffect(() => {
-    fetchCategoryServices();
-  }, []);
+  const services = useMemo(() => {
+    return categories.map((cat: any, index: number) => ({
+      ...cat,
+      ...staticServices[index % staticServices.length],
+    }));
+  }, [categories]);
 
   const displayServices = services.slice(0, 4);
   const totalCount = services.length;

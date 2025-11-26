@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardNavbar from "../components/DashboardNavbar";
 import { Container, Box, Typography } from "@mui/material";
@@ -9,20 +9,9 @@ import Group from "../assets/Group.png";
 import blanket from "../assets/blanket 1.png";
 import curtains from "../assets/curtains 1.png";
 import "./ServicesList.css";
-import { getAllCategoryServices } from "../utils/auth";
+import { useCategoryServices } from "../hooks/useCategoryServices";
 import Loader from "../components/ui/Loader";
 import defaultimage from "../../src/assets/default-image_450.png"
-interface Service {
-  id: number;
-  name: string;
-  icon: string;
-  iconBgColor: string;
-  iconColor: string;
-  bgColor: string;
-  chipBgColor: string;
-  time: string;
-  price: string;
-}
 
 const staticStyles = [
   {
@@ -57,29 +46,14 @@ const staticStyles = [
 
 const ServicesList: React.FC = () => {
   const navigate = useNavigate();
-  const [services, setServices] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { categories, loading } = useCategoryServices();
 
-  const fetchServices = async () => {
-    try {
-      setLoading(true);
-      const data = await getAllCategoryServices();
-      const categories = data?.categories || [];
-      const mergedData = categories.map((cat: any, index: number) => ({
-        ...cat,
-        ...staticStyles[index % staticStyles.length]
-      }));
-      setServices(mergedData);
-    } catch (err) {
-      console.log("Error fetching services:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchServices();
-  }, []);
+  const services = useMemo(() => {
+    return categories.map((cat: any, index: number) => ({
+      ...cat,
+      ...staticStyles[index % staticStyles.length]
+    }));
+  }, [categories]);
 
   const handleServiceClick = (serviceId: string) => {
     navigate(`/services/${serviceId}`);

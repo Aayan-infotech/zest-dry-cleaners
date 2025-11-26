@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DashboardNavbar from '../components/DashboardNavbar';
 import {
@@ -12,7 +12,8 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import './ServiceDetails.css';
 import Button from "../components/ui/Button";
 import Select from "../components/ui/Select";
-import { getAllCategoryServices, getServiceCategoryById } from '../utils/auth';
+import { getServiceCategoryById } from '../utils/auth';
+import { useCategoryServices } from '../hooks/useCategoryServices';
 import Loader from '../components/ui/Loader';
 import defaultImage from "../../src/assets/default-image_450.png"
 
@@ -42,13 +43,19 @@ const ServiceDetails: React.FC = () => {
   const serviceId = id;
   const [category, setCategory] = useState("");
   const [serviceDetials, setServiceDetails] = useState<Category | null>(null);
-  const [allCategory, setAllCategory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [quantity, setQuantity] = useState("");
-  const [categoryOptions, setCategoryOptions] = useState([]);
 
   const navigate = useNavigate();
+  const { categories } = useCategoryServices();
+
+  const categoryOptions = useMemo(() => {
+    return categories.map((c: Category) => ({
+      value: c._id,
+      label: c.categoryName
+    }));
+  }, [categories]);
 
   useEffect(() => {
     const fetchCategory = async () => {
@@ -66,24 +73,6 @@ const ServiceDetails: React.FC = () => {
     fetchCategory();
   }, [serviceId]);
 
-  useEffect(() => {
-    const fetchCategoryServices = async () => {
-      try {
-        const data = await getAllCategoryServices();
-        const categories = data?.categories || [];
-        setCategoryOptions(
-          categories.map((c: Category) => ({
-            value: c._id,
-            label: c.categoryName
-          }))
-        );
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch services");
-      }
-    };
-    fetchCategoryServices();
-  }, []);
-
   const handleCategoryChange = (e: any) => {
     const newCategoryId = e.target.value;
     setCategory(newCategoryId);
@@ -92,8 +81,6 @@ const ServiceDetails: React.FC = () => {
 
   const computedPrice =
     (serviceDetials?.pricePerPiece || 0) * (Number(quantity) || 1);
-
-  console.log(allCategory, 'allCategory')
 
   const service = {
     id: 1,
