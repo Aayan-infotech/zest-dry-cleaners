@@ -242,3 +242,20 @@ export const updateCartQuantity = async (categoryId: string, quantity: number): 
     throw new Error(error.response?.data?.message || "Failed to update quantity");
   }
 };
+
+export const removeCartItem = async (categoryId: string): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await axios.delete(`${API_BASE_URL}/cart/removeItem`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      data: { categoryId } 
+    });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to remove item");
+  }
+};
