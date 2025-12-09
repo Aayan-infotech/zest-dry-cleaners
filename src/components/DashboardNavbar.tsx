@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppBar, Toolbar, Typography, Button, Box, Container, IconButton, Menu, MenuItem, Drawer, List, ListItem, ListItemText, Divider } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box, Container, IconButton, Menu, MenuItem, Drawer, List, ListItem, ListItemText, Divider, Badge } from '@mui/material';
 import { Link } from 'react-router-dom';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -10,12 +10,16 @@ import CloseIcon from '@mui/icons-material/Close';
 import './DashboardNavbar.css';
 import { getUserRole, isAuthenticated } from '../utils/auth';
 import { GOOGLE_MAPS_API_KEY } from '../utils/config';
+import { ShoppingCart } from '@mui/icons-material';
+import { useCart } from '../hooks/useCart.tsx';
 
 const DashboardNavbar: React.FC = () => {
   const [locationAnchor, setLocationAnchor] = useState<null | HTMLElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>('Loading...');
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  const { cartCount } = useCart();
 
   const handleLocationClick = (event: React.MouseEvent<HTMLElement>) => {
     setLocationAnchor(event.currentTarget);
@@ -47,19 +51,19 @@ const DashboardNavbar: React.FC = () => {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
-          
+
           // Reverse geocode to get address
           try {
             const response = await fetch(
               `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_MAPS_API_KEY}`
             );
             const data = await response.json();
-            
+
             if (data.results && data.results.length > 0) {
               const addressComponents = data.results[0].address_components;
               let city = '';
               let country = '';
-              
+
               // Extract city and country from address components
               for (const component of addressComponents) {
                 if (component.types.includes('locality') || component.types.includes('administrative_area_level_2')) {
@@ -69,7 +73,7 @@ const DashboardNavbar: React.FC = () => {
                   country = component.long_name;
                 }
               }
-              
+
               if (city && country) {
                 setCurrentLocation(`${city}, ${country}`);
               } else if (city) {
@@ -366,6 +370,23 @@ const DashboardNavbar: React.FC = () => {
             >
               <MenuItem onClick={handleLocationClose}>{currentLocation}</MenuItem>
             </Menu>
+            <IconButton
+              component={Link}
+              to="/cart"
+              color="inherit"
+              className="hover-scale smooth-transition"
+              sx={{
+                color: 'white',
+                padding: { xs: '6px', sm: '7px', md: '8px' }
+              }}
+            >
+              <Badge
+                badgeContent={cartCount}
+                sx={{ "& .MuiBadge-badge": { backgroundColor: "rgba(201,248,186,1)", color: "#000", fontWeight: "bold" } }}
+              >
+                <ShoppingCart sx={{ fontSize: { xs: '20px', sm: '22px', md: '24px' } }} />
+              </Badge>
+            </IconButton>
             <IconButton
               component={Link}
               to="/notifications"

@@ -34,29 +34,6 @@ const EmployeeDashboard: React.FC = () => {
 
   const employeeId = getCookie('loggedinId');
 
-  const orders: Order[] = [
-    {
-      id: "1",
-      customerName: "John Doe",
-      phoneNumber: "+1234567890",
-      time: "12:00 PM",
-      priority: "high",
-      address: "123 Main St., NYC",
-      serviceType: "Iron",
-      items: 1,
-    },
-    {
-      id: "2",
-      customerName: "Mike",
-      phoneNumber: "+1234567890",
-      time: "12:00 PM",
-      priority: "low",
-      address: "123 Main St., NYC",
-      serviceType: "Dry Cleaning",
-      items: 1,
-    },
-  ];
-
   useEffect(() => {
     const fetchActiveOrders = async () => {
       if (!employeeId) return;
@@ -87,6 +64,11 @@ const EmployeeDashboard: React.FC = () => {
   return (
     <Box sx={{ background: "#336B3F", minHeight: "100vh" }}>
       <DashboardNavbar />
+      {error && (
+        <Box sx={{ background: "#ffdddd", color: "#b30000", p: 2, textAlign: "center", fontWeight: 600, borderRadius: "8px", mx: 2, mt: 2 }}>
+          {error}
+        </Box>
+      )}
       {loading ? (
         <Loader />
       ) : (

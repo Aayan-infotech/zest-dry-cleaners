@@ -9,7 +9,6 @@ const OTPVerification: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { phoneNumber, fromSignup } = location.state || {};
-  
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -54,7 +53,6 @@ const OTPVerification: React.FC = () => {
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Handle backspace
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
@@ -70,7 +68,6 @@ const OTPVerification: React.FC = () => {
       setOtp(newOtp);
       setError('');
       setSuccess('');
-      // Focus last input
       inputRefs.current[otp.length - 1]?.focus();
     }
   };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Container, Typography, Button, Paper, Avatar, Grid, Divider } from '@mui/material';
-import { Edit, Person, Email, Phone, LocationOn, Settings } from '@mui/icons-material';
+import { Edit, Person, Email, LocationOn, Settings } from '@mui/icons-material';
 import TextFieldComponent from '../components/ui/TextField';
 import './Profile.css';
 

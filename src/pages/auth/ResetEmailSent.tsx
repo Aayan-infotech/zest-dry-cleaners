@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Container, Typography, Button } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle, Email } from '@mui/icons-material';
+import { CheckCircle } from '@mui/icons-material';
 import './Auth.css';
 
 const ResetEmailSent: React.FC = () => {

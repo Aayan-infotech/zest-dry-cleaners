@@ -1,14 +1,11 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 import DashboardNavbar from "../components/DashboardNavbar";
 import {
   Box,
   Typography,
   Card,
-  Button,
-  TextField,
 } from "@mui/material";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
 import StarIcon from "@mui/icons-material/Star";
 import LocationDialog from "../components/dialogs/LocationDialog";
 import { LocationData } from "../components/dialogs/LocationDialog";
@@ -20,7 +17,7 @@ interface SavedAddress {
 }
 
 const LocationSelection: React.FC = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [openLocationDialog, setOpenLocationDialog] = useState(true);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([
     { id: "1", address: "3329 Joyce Str" },
@@ -41,9 +38,9 @@ const LocationSelection: React.FC = () => {
     setOpenLocationDialog(false);
   };
 
-  const handleContinue = () => {
-    navigate("/destination-selection");
-  };
+  // const handleContinue = () => {
+  //   navigate("/destination-selection");
+  // };
 
   return (
     <Box sx={{ background: "#336B3F", minHeight: "100vh" }}>

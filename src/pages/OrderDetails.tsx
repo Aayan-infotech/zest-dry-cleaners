@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+// import { useParams, useNavigate, Link } from 'react-router-dom';
 import DashboardNavbar from '../components/DashboardNavbar';
 import {
   Container,
@@ -13,8 +13,8 @@ import './OrderDetails.css';
 import shirtimg from "../../src/assets/c76246008f63e533577666cde2aa1a78dcf46157.jpg"
 
 const OrderDetails: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  // const { id } = useParams<{ id: string }>();
+  // const navigate = useNavigate();
   const [rating, setRating] = useState<number | null>(4.5);
   const [feedback, setFeedback] = useState('');
 

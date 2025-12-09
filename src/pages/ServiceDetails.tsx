@@ -12,10 +12,12 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import './ServiceDetails.css';
 import Button from "../components/ui/Button";
 import Select from "../components/ui/Select";
-import { getServiceCategoryById } from '../utils/auth';
+import { addToCart, getServiceCategoryById } from '../utils/auth';
 import { useCategoryServices } from '../hooks/useCategoryServices';
 import Loader from '../components/ui/Loader';
 import defaultImage from "../../src/assets/default-image_450.png"
+import { showSuccessToast } from '../utils/toast';
+import { useCart } from '../hooks/useCart.tsx';
 
 export interface Category {
   _id: string;
@@ -25,20 +27,21 @@ export interface Category {
   pricePerPiece?: number;
   estimatedDeliveryTime?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
   __v: number;
 }
 
 const ServiceDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const serviceId = id;
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(serviceId || "");
   const [serviceDetials, setServiceDetails] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [quantity, setQuantity] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [addToCartLoading, setAddToCartLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { loadCartCount } = useCart();
   const { categories } = useCategoryServices();
 
   const quantityList = Array.from({ length: 10 }, (_, i) => ({
@@ -55,13 +58,13 @@ const ServiceDetails: React.FC = () => {
 
   useEffect(() => {
     const fetchCategory = async () => {
-      if (!serviceId) return;
+       if (serviceId) setCategory(serviceId);
       try {
         setLoading(true);
-        const data = await getServiceCategoryById(serviceId);
+        const data = await getServiceCategoryById(serviceId as string);
         setServiceDetails(data?.category);
       } catch (err: any) {
-        setError(err.message || 'Failed to fetch category');
+        console.log(err.message || 'Failed to fetch category');
       } finally {
         setLoading(false);
       }
@@ -91,6 +94,20 @@ const ServiceDetails: React.FC = () => {
       'Perfect pressing every time — worth it!',
       'Fast and neatly done.',
     ],
+  };
+
+  const handleAddToCart = async () => {
+    if (!serviceDetials?._id) return console.error("Category ID missing!");
+    try {
+      setAddToCartLoading(true);
+      const res = await addToCart(serviceDetials._id, Number(quantity) || 1);
+      showSuccessToast(res?.message || "Product Added Sussessfully...!")
+      loadCartCount();
+    } catch (err) {
+      console.error("Add to Cart Error:", err);
+    } finally {
+      setAddToCartLoading(false);
+    }
   };
 
   return (
@@ -205,8 +222,8 @@ const ServiceDetails: React.FC = () => {
               </Box>
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '32px', }} className="animate-fade-in">
-              <Button onClick={() => navigate('/cart')} variant="primary" type="submit" size="large" className="custom-button--green hover-lift button-pulse" >
-                Continue
+              <Button variant="primary" onClick={handleAddToCart} disabled={addToCartLoading}  type="submit" size="large" className="custom-button--green hover-lift button-pulse" >
+                {addToCartLoading ? "Adding..." : "Add To Cart"}
               </Button>
             </Box>
           </Container>

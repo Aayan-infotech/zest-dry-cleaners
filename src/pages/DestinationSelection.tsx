@@ -8,7 +8,6 @@ import {
   Button,
   TextField,
 } from "@mui/material";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
 
 const DestinationSelection: React.FC = () => {
   const navigate = useNavigate();

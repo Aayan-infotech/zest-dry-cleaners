@@ -196,3 +196,49 @@ export const getAllActiveEmployeeOrders = async (id: string): Promise<any> => {
   }
 };
 
+export const addToCart = async (categoryId: string, quantity: number = 1): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await axios.post(`${API_BASE_URL}/cart/add`, { categoryId, quantity }, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+    return response.data;
+  } catch (error: any) {
+    const message = error.response?.data?.message || "Failed to add to cart";
+    throw new Error(message);
+  }
+};
+
+export const getCart = async (): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await axios.get(`${API_BASE_URL}/cart/getCart`, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      }
+    });
+    return response.data;
+  } catch (error: any) {
+    const message = error.response?.data?.message || "Failed to fetch cart";
+    throw new Error(message);
+  }
+};
+
+export const updateCartQuantity = async (categoryId: string, quantity: number): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    const response = await axios.put(
+      `${API_BASE_URL}/cart/updateQuantity`,
+      { categoryId, quantity },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to update quantity");
+  }
+};

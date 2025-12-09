@@ -5,9 +5,13 @@ import './styles/animations.css'
 import App from './App.tsx'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'leaflet/dist/leaflet.css';
+import { CartProvider } from './hooks/useCart.tsx'
+
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <CartProvider>
+      <App />
+    </CartProvider>
   </StrictMode>,
 )

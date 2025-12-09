@@ -19,29 +19,27 @@ const ForgotPassword: React.FC = () => {
     setError('');
   };
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneNumber) {
+      setError("Phone number is required");
+      return;
+    }
+    const formattedPhone = phoneNumber.replace(/^44/, "");
+    const finalPhone = formattedPhone.replace(/^\+44/, "");
+    try {
+      setLoading(true);
+      const res = await forgotPassword({ phoneNumber: finalPhone });
+      showSuccessToast(res?.message || "OTP sent to your phone");
 
-  if (!phoneNumber) {
-    setError("Phone number is required");
-    return;
-  }
-
-  // Remove country code prefix dynamically
-  const formattedPhone = phoneNumber.replace(/^44/, ""); // removes starting 44 for UK
-  // If +44 aata hai
-  const finalPhone = formattedPhone.replace(/^\+44/, "");
-
-  try {
-    const res = await forgotPassword({ phoneNumber: finalPhone });
-    showSuccessToast(res?.message || "OTP sent to your phone");
-    navigate("/otp-verification", { state: { phoneNumber: finalPhone } });
-  } catch (err: any) {
-    showErrorToast(err?.message);
-    setError(err?.message);
-  }
-};
-
+      navigate("/otp-verification", { state: { phoneNumber: finalPhone } });
+    } catch (err: any) {
+      showErrorToast(err?.message);
+      setError(err?.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Box className="auth-page" sx={{ minHeight: "100vh", backgroundColor: "#336B3F", display: "flex", alignItems: "center", justifyContent: "center", p: { xs: 1, sm: 2 } }}>
