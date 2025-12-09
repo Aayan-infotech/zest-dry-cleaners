@@ -92,8 +92,8 @@ const Profile: React.FC = () => {
             )}
           </Box>
 
-          <Grid2 container spacing={{ xs: 2, sm: 3, md: 4 }}>
-            <Grid2 size={{ xs: 12, md: 4 }}>
+          <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Box sx={{ textAlign: 'center' }}>
                 <Avatar
                   sx={{
@@ -116,7 +116,7 @@ const Profile: React.FC = () => {
               </Box>
             </Grid>
 
-            <Grid2 size={{ xs: 12, md: 8 }}>
+            <Grid size={{ xs: 12, md: 8 }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, sm: 2.5, md: 3 } }}>
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -126,8 +126,8 @@ const Profile: React.FC = () => {
                     </Typography>
                   </Box>
                   <Divider sx={{ mb: { xs: 1.5, sm: 2 } }} />
-                  <Grid2 container spacing={{ xs: 1.5, sm: 2 }}>
-                    <Grid2 size={{ xs: 12, sm: 6 }}>
+                  <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
                       {isEditing ? (
                         <TextFieldComponent
                           label="First Name"
@@ -138,7 +138,7 @@ const Profile: React.FC = () => {
                         <Typography variant="body1" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>{profileData.firstName}</Typography>
                       )}
                     </Grid>
-                    <Grid2 size={{ xs: 12, sm: 6 }}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
                       {isEditing ? (
                         <TextFieldComponent
                           label="Last Name"
@@ -160,8 +160,8 @@ const Profile: React.FC = () => {
                     </Typography>
                   </Box>
                   <Divider sx={{ mb: { xs: 1.5, sm: 2 } }} />
-                  <Grid2 container spacing={{ xs: 1.5, sm: 2 }}>
-                    <Grid2 size={{ xs: 12 }}>
+                  <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                    <Grid size={{ xs: 12 }}>
                       {isEditing ? (
                         <TextFieldComponent
                           label="Email"
@@ -173,7 +173,7 @@ const Profile: React.FC = () => {
                         <Typography variant="body1" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>{profileData.email}</Typography>
                       )}
                     </Grid>
-                    <Grid2 size={{ xs: 12 }}>
+                    <Grid size={{ xs: 12 }}>
                       {isEditing ? (
                         <TextFieldComponent
                           label="Phone"
@@ -196,8 +196,8 @@ const Profile: React.FC = () => {
                     </Typography>
                   </Box>
                   <Divider sx={{ mb: { xs: 1.5, sm: 2 } }} />
-                  <Grid2 container spacing={{ xs: 1.5, sm: 2 }}>
-                    <Grid2 size={{ xs: 12 }}>
+                  <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                    <Grid size={{ xs: 12 }}>
                       {isEditing ? (
                         <TextFieldComponent
                           label="Address"
@@ -208,7 +208,7 @@ const Profile: React.FC = () => {
                         <Typography variant="body1" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>{profileData.address}</Typography>
                       )}
                     </Grid>
-                    <Grid2 size={{ xs: 12 }}>
+                    <Grid size={{ xs: 12 }}>
                       {isEditing ? (
                         <TextFieldComponent
                           label="City"
