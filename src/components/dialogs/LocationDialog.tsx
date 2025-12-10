@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -9,8 +9,8 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import TextFieldComponent from "../ui/TextField";
-import { Button, Select } from "../ui";
-import { useLoadScript, Autocomplete } from "@react-google-maps/api";
+import { Button } from "../ui";
+import { Autocomplete, useLoadScript } from "@react-google-maps/api";
 import { GOOGLE_MAPS_API_KEY } from "../../utils/config";
 
 const libraries: any[] = ["places"];
@@ -33,7 +33,6 @@ const LocationDialog: React.FC<LocationDialogProps> = ({
   open,
   onClose,
   onAddLocation,
-  indianStates = [],
 }) => {
   const apiKey = GOOGLE_MAPS_API_KEY;
 
@@ -42,214 +41,288 @@ const LocationDialog: React.FC<LocationDialogProps> = ({
     libraries,
   });
 
+  // Debug: Log API key status (remove in production)
+  React.useEffect(() => {
+    if (!apiKey) {
+      console.error("Google Maps API key is missing!");
+    } else if (apiKey === 'AIzaSyByeL4973jLw5-DqyPtVl79I3eDN4uAuAQ') {
+      console.log("Using default API key. Make sure to set VITE_GOOGLE_MAPS_API_KEY in .env file.");
+    }
+    if (loadError) {
+      console.error("Google Maps load error:", loadError);
+    }
+    if (isLoaded) {
+      console.log("Google Maps loaded successfully");
+    }
+  }, [apiKey, isLoaded, loadError]);
+
   const [address, setAddress] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [state, setState] = useState("");
-  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
 
-  const onLoad = (autocomplete: google.maps.places.Autocomplete) => {
-    setAutocomplete(autocomplete);
-  };
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const zipCodeAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const zipCodeInputRef = useRef<HTMLInputElement>(null);
 
-  const onPlaceChanged = () => {
-    if (autocomplete) {
-      const place = autocomplete.getPlace();
-      handlePlaceSelected(place);
-    }
-  };
+  const handlePlaceChanged = useCallback(() => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      if (place) {
+        const addressValue = place.formatted_address || place.name || "";
+        setAddress(addressValue);
 
-  const handlePlaceSelected = (place: google.maps.places.PlaceResult) => {
-    if (place) {
-      const formattedAddress = place.formatted_address || place.name || "";
-      setAddress(formattedAddress);
-      const addressComponents = place.address_components || [];
-      const postalCode = addressComponents.find(
-        (component: any) => component.types.includes("postal_code")
-      );
-      if (postalCode) {
-        setZipCode(postalCode.long_name);
-      }
-      const stateComponent = addressComponents.find(
-        (component: any) => component.types.includes("administrative_area_level_1")
-      );
-      if (stateComponent) {
-        const matchedState = indianStates.find(
-          (s) => s.label.toLowerCase().includes(stateComponent.long_name.toLowerCase()) ||
-            stateComponent.long_name.toLowerCase().includes(s.label.toLowerCase())
-        );
-        setState(matchedState ? matchedState.value : stateComponent.long_name);
+        const comp = place.address_components || [];
+
+        const postal = comp.find((c: any) => c.types.includes("postal_code"));
+        if (postal) setZipCode(postal.long_name);
+
+        const st = comp.find((c: any) => c.types.includes("administrative_area_level_1"));
+        if (st) setState(st.long_name);
       }
     }
-  };
+  }, []);
 
-  const handleZipCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const zip = e.target.value.replace(/\D/g, '');
-    setZipCode(zip);
-    if (zip.length >= 5 && !address && (window as any).google && (window as any).google.maps) {
-      const geocoder = new (window as any).google.maps.Geocoder();
-      geocoder.geocode(
-        { address: zip },
-        (results: any[], status: any) => {
-          if (status === 'OK' && results && results.length > 0) {
-            const result = results[0];
-            setAddress(result.formatted_address);
-            const addressComponents = result.address_components || [];
-            const stateComponent = addressComponents.find(
-              (component: any) => component.types.includes("administrative_area_level_1")
-            );
-            if (stateComponent) {
-              const matchedState = indianStates.find(
-                (s) => s.label.toLowerCase().includes(stateComponent.long_name.toLowerCase()) ||
-                  stateComponent.long_name.toLowerCase().includes(s.label.toLowerCase())
-              );
-              setState(matchedState ? matchedState.value : stateComponent.long_name);
-            }
-          }
-        }
-      );
+  const handleZipCodePlaceChanged = useCallback(() => {
+    if (zipCodeAutocompleteRef.current) {
+      const place = zipCodeAutocompleteRef.current.getPlace();
+      if (place) {
+        const addressValue = place.formatted_address || place.name || "";
+        setAddress(addressValue);
+
+        const comp = place.address_components || [];
+
+        const postal = comp.find((c: any) => c.types.includes("postal_code"));
+        if (postal) setZipCode(postal.long_name);
+
+        const st = comp.find((c: any) => c.types.includes("administrative_area_level_1"));
+        if (st) setState(st.long_name);
+      }
     }
-  };
+  }, []);
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (onAddLocation && address && zipCode && state) {
-      const newLocation: LocationData = {
-        id: `location-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        address,
-        zipCode,
-        state,
-      };
-      onAddLocation(newLocation);
-    }
+    if (!address || !zipCode || !state) return;
+
+    const newLocation: LocationData = {
+      id: `location-${Date.now()}`,
+      address,
+      zipCode,
+      state,
+    };
+
+    onAddLocation?.(newLocation);
+
     setAddress("");
     setZipCode("");
     setState("");
     onClose();
   };
 
-
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      fullWidth 
       maxWidth="sm"
-      PaperProps={{
-        sx: {
-          backgroundColor: "rgba(201, 248, 186, 1)",
-          borderRadius: { xs: "20px", sm: "24px", md: "28px" },
-          margin: { xs: 1, sm: 2 },
-        }
+      PaperProps={{ 
+        sx: { 
+          background: "rgba(201,248,186,1)", 
+          borderRadius: "20px",
+          overflow: "visible", // Allow autocomplete dropdown to be visible
+        } 
+      }}
+      sx={{
+        "& .MuiDialog-container": {
+          "& .MuiPaper-root": {
+            overflow: "visible", // Ensure dropdown is visible
+          },
+        },
       }}
     >
-      <DialogTitle sx={{ color: "#336B3F", fontWeight: "bold", fontSize: { xs: "1.25rem", sm: "1.4rem", md: "1.5rem" }, px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 2.5, md: 3 } }}>
+      <DialogTitle sx={{ color: "#336B3F", fontWeight: "bold" }}>
         Add Location
-        <IconButton onClick={onClose} sx={{ position: "absolute", right: { xs: 4, sm: 8 }, top: { xs: 4, sm: 8 }, color: "#336B3F", }}>
-          <CloseIcon sx={{ fontSize: { xs: "20px", sm: "24px" } }} />
+        <IconButton onClick={onClose} sx={{ position: "absolute", right: 10, top: 10, color: "#336B3F" }}>
+          <CloseIcon />
         </IconButton>
       </DialogTitle>
-      <DialogContent sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 3 } }}>
-        <Typography variant="body2" sx={{ color: "rgba(51, 107, 63, 0.7)", mb: { xs: 2, sm: 2.5, md: 3 }, fontSize: { xs: "0.8rem", sm: "0.875rem", md: "0.95rem" } }}>
+
+      <DialogContent>
+        <Typography sx={{ mb: 2, color: "rgba(51,107,63,0.7)" }}>
           Add home & work locations
         </Typography>
+
         {loadError && (
-          <Box sx={{ py: 2, mb: 2 }}>
-            <Typography variant="body2" sx={{ color: "#e74c3c" }}>
-              Error loading maps: {loadError.message}
-            </Typography>
-          </Box>
+          <Typography color="red">
+            Failed to load maps. {loadError.message || "Please check your API key."}
+          </Typography>
         )}
         {!isLoaded && !loadError && (
-          <Box sx={{ py: 2, mb: 2 }}>
-            <Typography variant="body2" sx={{ color: "rgba(51, 107, 63, 0.7)" }}>
-              Loading Google Maps...
-            </Typography>
-          </Box>
+          <Typography>Loading address autocomplete...</Typography>
         )}
-        <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: { xs: 2, sm: 2.5, md: 3 } }}>
-          <Box>
-            {apiKey && isLoaded ? (
-              <Autocomplete
-                onLoad={onLoad}
-                onPlaceChanged={onPlaceChanged}
-                options={{
-                  types: ["geocode", "establishment"],
-                  componentRestrictions: { country: "in" },
-                }}
-              >
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Enter address"
-                  style={{
-                    width: "100%",
-                    height: "56px",
-                    padding: "0 14px",
-                    fontSize: "16px",
-                    borderRadius: "14px",
-                    border: "2px solid #336B3F",
-                    backgroundColor: "transparent",
-                    color: "#336B3F",
-                    outline: "none",
-                    fontFamily: "inherit",
+
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+
+          {/* Address Autocomplete */}
+          <Box sx={{ position: "relative", zIndex: 1300 }}>
+            <Typography
+              component="label"
+              sx={{
+                display: "block",
+                mb: 1,
+                color: "#336B3F",
+                fontWeight: "bold",
+                fontSize: { xs: "0.875rem", sm: "1rem" },
+              }}
+            >
+              Address <span style={{ color: "red" }}>*</span>
+            </Typography>
+            {isLoaded ? (
+              <Box sx={{ position: "relative" }}>
+                <Autocomplete
+                  onLoad={(ref) => {
+                    autocompleteRef.current = ref;
+                    console.log("Autocomplete loaded:", ref);
                   }}
-                  required
-                />
-              </Autocomplete>
+                  onPlaceChanged={() => {
+                    console.log("Place changed triggered");
+                    handlePlaceChanged();
+                  }}
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={address}
+                    onChange={(e) => {
+                      setAddress(e.target.value);
+                    }}
+                    onFocus={() => {
+                      console.log("Input focused, autocomplete ref:", autocompleteRef.current);
+                    }}
+                    placeholder="Enter address"
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "14px 16px",
+                      fontSize: "1rem",
+                      border: "2.5px solid #336B3F",
+                      borderRadius: "14px",
+                      outline: "none",
+                      backgroundColor: "transparent",
+                      color: "#336B3F",
+                    }}
+                  />
+                </Autocomplete>
+                {/* Ensure Google's autocomplete dropdown is visible */}
+                <style>{`
+                  .pac-container {
+                    z-index: 1400 !important;
+                    border-radius: 14px;
+                    margin-top: 4px;
+                  }
+                  .pac-item {
+                    padding: 10px;
+                    cursor: pointer;
+                  }
+                  .pac-item:hover {
+                    background-color: #f5f5f5;
+                  }
+                `}</style>
+              </Box>
             ) : (
-              <TextFieldComponent
-                label="Current Address"
+              <input
+                type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                borderColor="#336B3F"
-                labelColor="#336B3F"
-                textColor="#336B3F"
-                required
+                placeholder="Enter address (loading...)"
+                disabled
+                style={{
+                  width: "100%",
+                  padding: "14px 16px",
+                  fontSize: "1rem",
+                  border: "2.5px solid #336B3F",
+                  borderRadius: "14px",
+                  outline: "none",
+                  backgroundColor: "#f5f5f5",
+                  color: "#666",
+                  cursor: "not-allowed",
+                }}
               />
             )}
-
           </Box>
-          <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: { xs: 2, sm: 2 } }}>
-            <Box sx={{ flex: 1 }}>
+
+
+          {/* Zip Code Autocomplete */}
+          <Box sx={{ position: "relative", zIndex: 1300 }}>
+            <Typography
+              component="label"
+              sx={{
+                display: "block",
+                mb: 1,
+                color: "#336B3F",
+                fontWeight: "bold",
+                fontSize: { xs: "0.875rem", sm: "1rem" },
+              }}
+            >
+              Zip Code <span style={{ color: "red" }}>*</span>
+            </Typography>
+            {isLoaded ? (
+              <Box sx={{ position: "relative" }}>
+                <Autocomplete
+                  onLoad={(ref) => {
+                    zipCodeAutocompleteRef.current = ref;
+                  }}
+                  onPlaceChanged={() => {
+                    handleZipCodePlaceChanged();
+                  }}
+                >
+                  <input
+                    ref={zipCodeInputRef}
+                    type="text"
+                    value={zipCode}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "");
+                      setZipCode(value);
+                    }}
+                    placeholder="Enter zip code or search by postal code"
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "14px 16px",
+                      fontSize: "1rem",
+                      border: "2.5px solid #336B3F",
+                      borderRadius: "14px",
+                      outline: "none",
+                      backgroundColor: "transparent",
+                      color: "#336B3F",
+                    }}
+                  />
+                </Autocomplete>
+              </Box>
+            ) : (
               <TextFieldComponent
                 label="Zip Code"
                 value={zipCode}
-                onChange={handleZipCodeChange}
-                borderColor="#336B3F"
-                labelColor="#336B3F"
-                textColor="#336B3F"
+                onChange={(e) => setZipCode(e.target.value.replace(/\D/g, ""))}
                 required
+                disabled={true}
               />
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              {/* <Select
-                label="State"
-                options={indianStates}
-                value={state}
-                onChange={(e) => setState(e.target.value as string)}
-                placeholder="Select State"
-                variant="dialog"
-                required
-              /> */}
-              <Box sx={{ flex: 1 }}>
-                <Select
-                  label="State"
-                  value={state}
-                  onChange={(e) => setState(e.target.value as string)}
-                  placeholder="Select State"
-                  variant="dialog"
-                  required
-                  options={[
-                    { label: "Maharashtra", value: "Maharashtra" },
-                    { label: "Uttar Pradesh", value: "Uttar Pradesh" },
-                  ]}
-                />
-              </Box>
-
-            </Box>
+            )}
           </Box>
-          <Button type="submit" variant="primary" size="large" style={{ backgroundColor: "#336B3F", color: "white", borderRadius: "12px", fontWeight: "bold", marginTop: 2, }}>
+
+          <TextFieldComponent
+            label="State"
+            value={state}
+            onChange={() => {}} // Read-only, auto-populated from address
+            placeholder="State will be auto-filled from address"
+            required
+            type="text"
+            disabled={true}
+          />
+
+          <Button type="submit" style={{ background: "#336B3F", color: "white", borderRadius: 12 }}>
             Add Location
           </Button>
         </Box>
@@ -259,4 +332,3 @@ const LocationDialog: React.FC<LocationDialogProps> = ({
 };
 
 export default LocationDialog;
-

@@ -16,6 +16,8 @@ interface CustomTextFieldProps {
   labelColor?: string;
   textColor?: string;
   error?: string;
+  inputRef?: React.Ref<HTMLInputElement>;
+  disabled?: boolean;
 }
 
 const TextFieldComponent: React.FC<CustomTextFieldProps> = ({
@@ -32,6 +34,8 @@ const TextFieldComponent: React.FC<CustomTextFieldProps> = ({
   labelColor = "#336B3F",
   textColor = "#336B3F",
   error,
+  inputRef,
+  disabled = false,
 }) => {
   return (
     <TextField
@@ -45,6 +49,8 @@ const TextFieldComponent: React.FC<CustomTextFieldProps> = ({
       placeholder={placeholder}
       error={!!error}
       helperText={error}
+      inputRef={inputRef}
+      disabled={disabled}
       InputLabelProps={{ style: { color: labelColor } }}
       sx={{
         "& .MuiInputLabel-root": {

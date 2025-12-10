@@ -118,7 +118,7 @@ const Cart = () => {
 
                         {/* Left Side Items */}
                         <div className="col-md-6">
-                            {cartItems.map((item) => (
+                            {cartItems?.map((item) => (
                                 <Card key={item?._id}
                                     sx={{
                                         display: "flex",
@@ -132,6 +132,7 @@ const Cart = () => {
                                     <CardMedia
                                         component="img"
                                         image={item?.categoryId?.profileImage || defaultImage}
+                                        onError={(e: any) => { e.target.src = defaultImage; }}
                                         sx={{
                                             width: 70,
                                             height: 70,

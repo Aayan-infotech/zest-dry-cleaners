@@ -10,16 +10,19 @@ import {
   Radio,
   RadioGroup,
   FormControlLabel,
+  Divider,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
-import StarIcon from "@mui/icons-material/Star";
 import LocationDialog from "../components/dialogs/LocationDialog";
 import type { LocationData } from "../components/dialogs/LocationDialog";
 import { GOOGLE_MAPS_API_KEY } from "../utils/config";
 import { useGoogleMaps } from "../hooks/useGoogleMaps";
+import { useCurrentLocation } from "../hooks/useCurrentLocation";
+import { Autocomplete } from "@react-google-maps/api";
 
 import "./RouteSelection.css";
+import { AddLocation, MyLocation } from "@mui/icons-material";
 
 // Declare Google Maps types
 declare global {
@@ -41,6 +44,8 @@ const RouteSelection: React.FC = () => {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
+  const currentLocationAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const currentLocationInputRef = useRef<HTMLInputElement>(null);
 
   // store date/time from session (keeps your previous behavior)
   const [selectedDate, setSelectedDate] = useState<string>("");
@@ -49,6 +54,8 @@ const RouteSelection: React.FC = () => {
 
   // route addresses (dynamic - loaded from sessionStorage or empty)
   const [addresses, setAddresses] = useState<RouteAddress[]>([]);
+  const currentLocationFromHook = useCurrentLocation();
+  const [currentLocation, setCurrentLocation] = useState<string>(currentLocationFromHook);
 
   // selected address ID for radio buttons
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
@@ -64,18 +71,18 @@ const RouteSelection: React.FC = () => {
     // read selected date/time from session storage (if present)
     const date = sessionStorage.getItem("selectedDate");
     const time = sessionStorage.getItem("selectedTime");
-    
+
     if (date) {
       const dateObj = new Date(date);
       const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
       const months = [
-        "January","February","March","April","May","June","July","August","September","October","November","December"
+        "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"
       ];
       const dayName = days[dateObj.getDay()];
       const monthName = months[dateObj.getMonth()];
       const day = dateObj.getDate();
       const year = dateObj.getFullYear();
-      
+
       // Set day name separately
       setSelectedDay(dayName);
       // Set full date
@@ -85,12 +92,12 @@ const RouteSelection: React.FC = () => {
       const today = new Date();
       const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
       const months = [
-        "January","February","March","April","May","June","July","August","September","October","November","December"
+        "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"
       ];
       setSelectedDay(days[today.getDay()]);
       setSelectedDate(`${months[today.getMonth()]} ${today.getDate()}, ${today.getFullYear()}`);
     }
-    
+
     if (time) {
       setSelectedTime(time);
     } else {
@@ -116,10 +123,10 @@ const RouteSelection: React.FC = () => {
   // Initialize Google Map
   useEffect(() => {
     if (!isLoaded || !mapRef.current || googleMapRef.current) return;
-    
+
     const initializeMap = async () => {
       if (!mapRef.current || googleMapRef.current) return;
-      
+
       // Ensure google.maps is available and fully loaded
       if (typeof window === 'undefined' || !window.google || !window.google.maps || !window.google.maps.MapTypeId) {
         // Wait a bit and retry if Google Maps is still loading
@@ -134,7 +141,7 @@ const RouteSelection: React.FC = () => {
       try {
         // Import the maps library to get the Map class
         const { Map } = await window.google.maps.importLibrary('maps') as any;
-        
+
         if (!mapRef.current) return;
 
         const map = new Map(mapRef.current, {
@@ -170,7 +177,7 @@ const RouteSelection: React.FC = () => {
   // Update markers when addresses change
   useEffect(() => {
     if (!googleMapRef.current || !isLoaded) return;
-    
+
     // Ensure google.maps is available
     if (typeof window === 'undefined' || !window.google || !window.google.maps) {
       return;
@@ -245,23 +252,23 @@ const RouteSelection: React.FC = () => {
   // Add new location using LocationDialog
   const handleLocationAdd = async (location: LocationData) => {
     const coords = await geocodeAddress(location.address);
-    
+
     const newAddr: RouteAddress = {
       id: location.id,
       address: location.address,
       lat: coords?.lat,
       lng: coords?.lng,
     };
-    
+
     const updatedAddresses = [...addresses, newAddr];
     setAddresses(updatedAddresses);
-    
+
     // Save to sessionStorage
     sessionStorage.setItem("routeAddresses", JSON.stringify(updatedAddresses));
-    
+
     // Select the newly added address
     setSelectedAddressId(location.id);
-    
+
     setOpenLocationDialog(false);
   };
 
@@ -270,7 +277,7 @@ const RouteSelection: React.FC = () => {
     const updated = addresses.filter((a) => a.id !== addressId);
     setAddresses(updated);
     sessionStorage.setItem("routeAddresses", JSON.stringify(updated));
-    
+
     // If removed address was selected, select first available or clear selection
     if (selectedAddressId === addressId) {
       if (updated.length > 0) {
@@ -295,6 +302,15 @@ const RouteSelection: React.FC = () => {
       googleMapRef.current.setZoom(15);
     }
   };
+
+  // Sync currentLocation state with hook value when it changes
+  useEffect(() => {
+    if (currentLocationFromHook && currentLocationFromHook !== 'Loading...') {
+      setCurrentLocation(currentLocationFromHook);
+    }
+  }, [currentLocationFromHook]);
+
+  console.log(selectedAddressId, addresses, 'addresses');
 
   return (
     <Box sx={{ background: "#336B3F", minHeight: "100vh" }}>
@@ -390,51 +406,77 @@ const RouteSelection: React.FC = () => {
 
         {/* Address Selection Panel Card - positioned on map */}
         <Box className="address-card">
-          <Card sx={{ p: 3, backgroundColor: "#336B3F", borderRadius: 3 }}>
-            {/* Radio buttons for addresses */}
+          <Card sx={{ p: 1, backgroundColor: "#336B3F", borderRadius: 3 }}>
             <RadioGroup
+              row
               value={selectedAddressId}
               onChange={(e) => handleAddressSelect(e.target.value)}
-              sx={{ mb: 2 }}
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 1.5,
+                mb: 1,
+              }}
             >
-              {addresses.map((addr) => (
-                <FormControlLabel
+              {addresses?.map((addr) => (
+                <Box
                   key={addr.id}
-                  value={addr.id}
-                  control={
-                    <Radio
-                      sx={{
-                        color: "rgba(201, 248, 186, 1)",
-                        "&.Mui-checked": {
-                          color: "rgba(201, 248, 186, 1)",
-                        },
-                      }}
-                    />
-                  }
-                  label={
-                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                      <Typography sx={{ color: "rgba(201, 248, 186, 1)", fontSize: "0.95rem" }}>
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "#C9F8BA",
+                    borderRadius: 2,
+                    padding: "4px 10px",
+                    gap: 0.5,
+                    width: "31%",
+                    minWidth: "150px",
+                  }}
+                >
+                  <FormControlLabel
+                    sx={{
+                      margin: 0,
+                      flex: 1,
+                    }}
+                    value={addr.id}
+                    control={
+                      <Radio
+                        sx={{
+                          color: "#336B3F",
+                          "&.Mui-checked": { color: "#336B3F" },
+                          p: 0.2,
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography
+                        sx={{
+                          color: "#336B3F",
+                          fontSize: "0.82rem",
+                          fontWeight: 500,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          width: "100px",
+                        }}
+                      >
                         {addr.address}
                       </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveAddress(addr.id);
-                        }}
-                        sx={{ color: "rgba(201, 248, 186, 0.8)", ml: 1 }}
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  }
-                  sx={{
-                    mb: 1,
-                    "& .MuiFormControlLabel-label": {
-                      flex: 1,
-                    },
-                  }}
-                />
+                    }
+                  />
+
+                  <IconButton
+                    size="small"
+                    onClick={(e) => { e.stopPropagation(); handleRemoveAddress(addr.id); }}
+                    sx={{
+                      color: "#336B3F",
+                      p: "2px",
+                      "&:hover": { color: "#fff" }
+                    }}
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Box>
               ))}
             </RadioGroup>
 
@@ -459,96 +501,90 @@ const RouteSelection: React.FC = () => {
 
             {/* Divider */}
             <Box sx={{ height: 1, backgroundColor: "rgba(201, 248, 186, 0.12)", my: 2 }} />
-
-            {/* Current/Selected Address Details */}
-            {selectedAddressId && (
-              <Box sx={{ mb: 2 }}>
-                <Typography
-                  sx={{
-                    color: "rgba(201, 248, 186, 1)",
-                    fontSize: "0.9rem",
-                    fontWeight: 600,
-                    mb: 1,
-                  }}
-                >
-                  Current Address:
-                </Typography>
-                {(() => {
-                  const selectedAddr = addresses.find((a) => a.id === selectedAddressId);
-                  return selectedAddr ? (
-                    <Box
-                      sx={{
-                        backgroundColor: "rgba(201, 248, 186, 0.2)",
-                        borderRadius: 2,
-                        p: 1.5,
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 1, mb: 2 }}>
+              <MyLocation sx={{ fontSize: 24, color: "rgba(201,248,186,1)" }} />
+              {isLoaded ? (
+                <Box sx={{ position: "relative", flex: 1 }}>
+                  <Autocomplete
+                    onLoad={(ref) => {
+                      currentLocationAutocompleteRef.current = ref;
+                    }}
+                    onPlaceChanged={() => {
+                      if (currentLocationAutocompleteRef.current) {
+                        const place = currentLocationAutocompleteRef.current.getPlace();
+                        if (place) {
+                          const addressValue = place.formatted_address || place.name || "";
+                          setCurrentLocation(addressValue);
+                        }
+                      }
+                    }}
+                  >
+                    <input
+                      ref={currentLocationInputRef}
+                      type="text"
+                      value={currentLocation}
+                      onChange={(e) => setCurrentLocation(e.target.value)}
+                      placeholder="Type or choose current location"
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        outline: "none",
+                        color: "rgba(201,248,186,1)",
+                        fontSize: "0.9rem",
+                        width: "100%",
                       }}
-                    >
-                      <Typography sx={{ color: "rgba(201, 248, 186, 1)", fontSize: "0.9rem" }}>
-                        {selectedAddr.address}
-                      </Typography>
-                      {selectedAddr.lat && selectedAddr.lng && (
-                        <Typography
-                          sx={{
-                            color: "rgba(201, 248, 186, 0.8)",
-                            fontSize: "0.8rem",
-                            mt: 0.5,
-                          }}
-                        >
-                          Coordinates: {selectedAddr.lat.toFixed(4)}, {selectedAddr.lng.toFixed(4)}
-                        </Typography>
-                      )}
-                    </Box>
-                  ) : null;
-                })()}
-              </Box>
-            )}
+                    />
+                  </Autocomplete>
 
-            {/* Route stops list (if needed for visual representation) */}
-            {addresses.length > 0 && (
-              <Box>
-                {addresses.map((addr, i) => (
-                  <Box key={`route-${addr.id}`}>
-                    <Box sx={{ display: "flex", alignItems: "center", mb: 1.5 }}>
-                      <Box
-                        sx={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: "50%",
-                          border: "2px solid rgba(201, 248, 186, 1)",
-                          backgroundColor: addr.isDestination ? "transparent" : "rgba(201, 248, 186, 1)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          mr: 2,
-                        }}
-                      >
-                        {addr.isDestination ? (
-                          <StarIcon sx={{ color: "rgba(201, 248, 186, 1)", fontSize: 18 }} />
-                        ) : (
-                          <Box sx={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#336B3F" }} />
-                        )}
-                      </Box>
-                      <Typography sx={{ color: "rgba(201, 248, 186, 1)", fontSize: "0.95rem", flex: 1 }}>
-                        {addr.address}
-                      </Typography>
-                    </Box>
-
-                    {i < addresses.length - 1 && (
-                      <Box
-                        sx={{
-                          width: 2,
-                          height: 30,
-                          backgroundColor: "rgba(201, 248, 186, 0.35)",
-                          ml: 2.5,
-                          mb: 1.5,
-                          borderStyle: "dotted",
-                        }}
-                      />
-                    )}
-                  </Box>
-                ))}
-              </Box>
-            )}
+                  <style>{`
+                    .pac-container {
+                      z-index: 1400 !important;
+                      border-radius: 14px;
+                      margin-top: 4px;
+                    }
+                    .pac-item {
+                      padding: 10px;
+                      cursor: pointer;
+                    }
+                    .pac-item:hover {
+                      background-color: #f5f5f5;
+                    }
+                  `}</style>
+                </Box>
+              ) : (
+                <input
+                  type="text"
+                  value={currentLocation}
+                  onChange={(e) => setCurrentLocation(e.target.value)}
+                  placeholder="Loading location autocomplete..."
+                  disabled
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    color: "rgba(201,248,186,0.6)",
+                    fontSize: "0.9rem",
+                    width: "100%",
+                    cursor: "not-allowed",
+                  }}
+                />
+              )}
+              {currentLocation && currentLocation !== "Loading..." && (
+                <IconButton
+                  size="small"
+                  onClick={() => setCurrentLocation("")}
+                  sx={{ color: "rgba(255,255,255,0.85)", "&:hover": { color: "#fff" } }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              )}
+            </Box>
+            <Divider sx={{ height: "2px", background: "#FFFFFF", my: 1.5 }} />
+            <Box sx={{ mb: 2, color: "rgba(201, 248, 186, 1)", fontSize: "0.9rem", fontWeight: 600, display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body1">
+                <AddLocation sx={{ fontSize: '24px' }} /> {selectedAddressId ? addresses.find((a) => a.id === selectedAddressId)?.address : "No address selected"}
+              </Typography>
+            </Box>
 
             {/* Proceed */}
             <Box sx={{ textAlign: "center", mt: 2 }}>
