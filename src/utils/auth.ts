@@ -49,6 +49,58 @@ export const login = async (email: string, password: string, role: string): Prom
   }
 };
 
+// ==================== GET USER PROFILE ====================
+export const getUserProfile = async (): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    const userId = getCookie('loggedinId');
+    if (!token) throw new Error("User not authenticated");
+    if (!userId) throw new Error("User ID not found");
+
+    const response = await axios.get(`${API_BASE_URL}/user/profile/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch user profile");
+  }
+};
+
+// ==================== UPDATE USER PROFILE ====================
+export const updateUserProfile = async (
+  userId: string,
+  data: {
+    fullName?: string;
+    email?: string;
+    phoneNumber?: string;
+  },
+  profileImage?: File
+): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    if (!token) throw new Error("User not authenticated");
+
+    const formData = new FormData();
+    if (data.fullName) formData.append("fullName", data.fullName);
+    if (data.email) formData.append("email", data.email);
+    if (data.phoneNumber) formData.append("phoneNumber", data.phoneNumber);
+    if (profileImage) formData.append("profileImage", profileImage);
+
+    const response = await axios.put(`${API_BASE_URL}/auth/editProfile/${userId}`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to update profile");
+  }
+};
+
 export const forgotPassword = async (data: ForgotPasswordRequest): Promise<any> => {
   try {
     const response = await axios.post(
@@ -252,10 +304,86 @@ export const removeCartItem = async (categoryId: string): Promise<any> => {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json"
       },
-      data: { categoryId } 
+      data: { categoryId }
     });
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || "Failed to remove item");
+  }
+};
+
+// ======================== ADD NEW LOCATION ========================
+export const addUserAddress = async (payload: any): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    if (!token) throw new Error("User not authenticated");
+
+    const response = await axios.post(`${API_BASE_URL}/address/add`, payload, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    return response;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to add address");
+  }
+};
+
+// ======================== GET USER ADDRESSES ========================
+export const getUserAddresses = async (userId: string): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    if (!token) throw new Error("User not authenticated");
+
+    const response = await axios.get(`${API_BASE_URL}/address/getAddresses/${userId}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    return response;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch addresses");
+  }
+};
+
+// ======================== UPDATE USER ADDRESS ========================
+export const updateUserAddress = async (addressId: string, payload: any): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    if (!token) throw new Error("User not authenticated");
+
+    const response = await axios.put(`${API_BASE_URL}/address/update/${addressId}`, payload, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    return response;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to update address");
+  }
+};
+
+// ======================== DELETE USER ADDRESS ========================
+export const deleteUserAddress = async (addressId: string): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    if (!token) throw new Error("User not authenticated");
+
+    const response = await axios.delete(`${API_BASE_URL}/address/delete/${addressId}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    return response;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to delete address");
   }
 };

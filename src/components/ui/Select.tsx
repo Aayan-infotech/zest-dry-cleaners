@@ -55,15 +55,15 @@ const Select: React.FC<SelectProps> = ({
           fontSize: { xs: "0.875rem", sm: "1rem" },
           "& fieldset": { 
             borderColor: isDark ? "rgba(250, 199, 199, 1)" : variant === 'dialog' ? "#336B3F" : "#336B3F",
-            borderWidth: "2px",
+            borderWidth: variant === 'dialog' ? "2.5px" : "2px",
           },
           "&:hover fieldset": { 
             borderColor: isDark ? "rgba(250, 199, 199, 1)" : variant === 'dialog' ? "#336B3F" : "#336B3F",
-            borderWidth: "2px",
+            borderWidth: variant === 'dialog' ? "2.5px" : "2px",
           },
           "&.Mui-focused fieldset": { 
             borderColor: isDark ? "rgba(250, 199, 199, 1)" : variant === 'dialog' ? "#336B3F" : "#336B3F",
-            borderWidth: "2px",
+            borderWidth: variant === 'dialog' ? "2.5px" : "2px",
           },
         },
         "& .MuiSelect-select": {

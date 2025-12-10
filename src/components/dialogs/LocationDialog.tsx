@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -9,9 +9,13 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import TextFieldComponent from "../ui/TextField";
-import { Button } from "../ui";
+import { Button, Select } from "../ui";
 import { Autocomplete, useLoadScript } from "@react-google-maps/api";
 import { GOOGLE_MAPS_API_KEY } from "../../utils/config";
+import { addUserAddress, updateUserAddress } from "../../utils/auth";
+import { getCookie } from "../../utils/cookies";
+import { showSuccessToast } from "../../utils/toast";
+import Loader from "../ui/Loader";
 
 const libraries: any[] = ["places"];
 
@@ -27,43 +31,101 @@ interface LocationDialogProps {
   onClose: () => void;
   onAddLocation?: (location: LocationData) => void;
   indianStates?: Array<{ value: string; label: string }>;
+  editAddress?: {
+    _id: string;
+    userId: string;
+    addressType: string;
+    zipCode: string;
+    houseNumber: string;
+    streetName: string;
+    area: string;
+    landmark?: string;
+    city: string;
+    state: string;
+    isDefault: boolean;
+    currentAddress?: {
+      type: string;
+      coordinates: [number, number];
+    };
+  } | null;
 }
 
 const LocationDialog: React.FC<LocationDialogProps> = ({
   open,
   onClose,
   onAddLocation,
+  editAddress,
 }) => {
+  const userId = getCookie("loggedinId");
   const apiKey = GOOGLE_MAPS_API_KEY;
+  const isEditMode = !!editAddress;
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: apiKey,
     libraries,
   });
 
-  // Debug: Log API key status (remove in production)
-  React.useEffect(() => {
-    if (!apiKey) {
-      console.error("Google Maps API key is missing!");
-    } else if (apiKey === 'AIzaSyByeL4973jLw5-DqyPtVl79I3eDN4uAuAQ') {
-      console.log("Using default API key. Make sure to set VITE_GOOGLE_MAPS_API_KEY in .env file.");
-    }
-    if (loadError) {
-      console.error("Google Maps load error:", loadError);
-    }
-    if (isLoaded) {
-      console.log("Google Maps loaded successfully");
-    }
-  }, [apiKey, isLoaded, loadError]);
-
   const [address, setAddress] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [state, setState] = useState("");
+  const [city, setCity] = useState("");
+  const [streetName, setStreetName] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
+  const [area, setArea] = useState("");
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [addressType, setAddressType] = useState("Home");
+  const [isDefault, setIsDefault] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const zipCodeAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const zipCodeInputRef = useRef<HTMLInputElement>(null);
+
+  // Load edit address data when dialog opens
+  useEffect(() => {
+    if (editAddress && open) {
+      // Format address from components
+      const parts = [];
+      if (editAddress.houseNumber) parts.push(editAddress.houseNumber);
+      if (editAddress.streetName) parts.push(editAddress.streetName);
+      if (editAddress.area) parts.push(editAddress.area);
+      if (editAddress.city) parts.push(editAddress.city);
+      if (editAddress.state) parts.push(editAddress.state);
+      if (editAddress.zipCode) parts.push(editAddress.zipCode);
+      
+      setAddress(parts.join(", "));
+      setZipCode(editAddress.zipCode || "");
+      setState(editAddress.state || "");
+      setCity(editAddress.city || "");
+      setStreetName(editAddress.streetName || "");
+      setHouseNumber(editAddress.houseNumber || "");
+      setArea(editAddress.area || "");
+      setAddressType(editAddress.addressType || "Home");
+      setIsDefault(editAddress.isDefault || false);
+      
+      // Set coordinates if available
+      if (editAddress.currentAddress && editAddress.currentAddress.coordinates) {
+        const [lng, lat] = editAddress.currentAddress.coordinates;
+        setLatitude(lat);
+        setLongitude(lng);
+      }
+    } else if (!editAddress && open) {
+      // Reset form when opening for new address
+      setAddress("");
+      setZipCode("");
+      setState("");
+      setCity("");
+      setStreetName("");
+      setHouseNumber("");
+      setArea("");
+      setLatitude(null);
+      setLongitude(null);
+      setAddressType("Home");
+      setIsDefault(false);
+    }
+  }, [editAddress, open]);
 
   const handlePlaceChanged = useCallback(() => {
     if (autocompleteRef.current) {
@@ -74,11 +136,46 @@ const LocationDialog: React.FC<LocationDialogProps> = ({
 
         const comp = place.address_components || [];
 
+        // Extract postal code
         const postal = comp.find((c: any) => c.types.includes("postal_code"));
         if (postal) setZipCode(postal.long_name);
 
+        // Extract state
         const st = comp.find((c: any) => c.types.includes("administrative_area_level_1"));
         if (st) setState(st.long_name);
+
+        // Extract city
+        const cityComp = comp.find((c: any) => 
+          c.types.includes("locality") || c.types.includes("administrative_area_level_2")
+        );
+        if (cityComp) setCity(cityComp.long_name);
+
+        // Extract street name
+        const route = comp.find((c: any) => c.types.includes("route"));
+        if (route) setStreetName(route.long_name);
+
+        // Extract house number
+        const streetNumber = comp.find((c: any) => c.types.includes("street_number"));
+        if (streetNumber) setHouseNumber(streetNumber.long_name);
+
+        // Extract area/neighborhood
+        const neighborhood = comp.find((c: any) => 
+          c.types.includes("neighborhood") || c.types.includes("sublocality")
+        );
+        if (neighborhood) setArea(neighborhood.long_name);
+
+        // Extract coordinates from place geometry
+        if (place.geometry && place.geometry.location) {
+          const lat = typeof place.geometry.location.lat === 'function' 
+            ? place.geometry.location.lat() 
+            : place.geometry.location.lat;
+          const lng = typeof place.geometry.location.lng === 'function' 
+            ? place.geometry.location.lng() 
+            : place.geometry.location.lng;
+          
+          setLatitude(lat);
+          setLongitude(lng);
+        }
       }
     }
   }, []);
@@ -92,33 +189,127 @@ const LocationDialog: React.FC<LocationDialogProps> = ({
 
         const comp = place.address_components || [];
 
+        // Extract postal code
         const postal = comp.find((c: any) => c.types.includes("postal_code"));
         if (postal) setZipCode(postal.long_name);
 
+        // Extract state
         const st = comp.find((c: any) => c.types.includes("administrative_area_level_1"));
         if (st) setState(st.long_name);
+
+        // Extract city
+        const cityComp = comp.find((c: any) => 
+          c.types.includes("locality") || c.types.includes("administrative_area_level_2")
+        );
+        if (cityComp) setCity(cityComp.long_name);
+
+        // Extract street name
+        const route = comp.find((c: any) => c.types.includes("route"));
+        if (route) setStreetName(route.long_name);
+
+        // Extract house number
+        const streetNumber = comp.find((c: any) => c.types.includes("street_number"));
+        if (streetNumber) setHouseNumber(streetNumber.long_name);
+
+        // Extract area/neighborhood
+        const neighborhood = comp.find((c: any) => 
+          c.types.includes("neighborhood") || c.types.includes("sublocality")
+        );
+        if (neighborhood) setArea(neighborhood.long_name);
+
+        // Extract coordinates from place geometry
+        if (place.geometry && place.geometry.location) {
+          const lat = typeof place.geometry.location.lat === 'function' 
+            ? place.geometry.location.lat() 
+            : place.geometry.location.lat;
+          const lng = typeof place.geometry.location.lng === 'function' 
+            ? place.geometry.location.lng() 
+            : place.geometry.location.lng;
+          
+          setLatitude(lat);
+          setLongitude(lng);
+        }
       }
     }
   }, []);
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!address || !zipCode || !state) return;
+    if (latitude === null || longitude === null) {
+      console.error("Coordinates are missing. Please select a valid address.");
+      return;
+    }
 
-    const newLocation: LocationData = {
-      id: `location-${Date.now()}`,
-      address,
-      zipCode,
-      state,
-    };
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        userId: userId,
+        city: city || state,         
+        state: state,
+        zipCode,
+        houseNumber: houseNumber || "",
+        streetName: streetName || address,
+        area: area || "",
+        landmark: "",
+        longitude: longitude,
+        latitude: latitude,
+        addressType: addressType,
+        isDefault: isDefault
+      };
 
-    onAddLocation?.(newLocation);
-
-    setAddress("");
-    setZipCode("");
-    setState("");
-    onClose();
+      let response;
+      if (isEditMode && editAddress) {
+        // Update existing address
+        response = await updateUserAddress(editAddress._id, payload);
+        showSuccessToast(response.data.message || "Address updated successfully!");
+      } else {
+        // Add new address
+        response = await addUserAddress(payload);
+        showSuccessToast(response.data.message || "Address added successfully!");
+      }
+      
+      console.log(response);
+      
+      // Don't add to savedLocations - let API refresh handle it
+      // onAddLocation?.({
+      //   id: editAddress?._id || `loc-${Date.now()}`,
+      //   address,
+      //   zipCode,
+      //   state,
+      // });
+      
+      setAddress("");
+      setZipCode("");
+      setState("");
+      setCity("");
+      setStreetName("");
+      setHouseNumber("");
+      setArea("");
+      setLatitude(null);
+      setLongitude(null);
+      setAddressType("Home");
+      setIsDefault(false);
+      onClose();
+      
+      // Trigger refresh instead of page reload
+      // The refreshTrigger will be handled by parent component
+      if (onAddLocation) {
+        // Pass a flag to trigger refresh
+        onAddLocation({
+          id: editAddress?._id || `loc-${Date.now()}`,
+          address,
+          zipCode,
+          state,
+        });
+      }
+    } catch (err: any) {
+      console.log(err);
+      showSuccessToast(err.message || "Failed to save address");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -131,29 +322,25 @@ const LocationDialog: React.FC<LocationDialogProps> = ({
         sx: { 
           background: "rgba(201,248,186,1)", 
           borderRadius: "20px",
-          overflow: "visible", // Allow autocomplete dropdown to be visible
+          overflow: "visible",
         } 
       }}
       sx={{
         "& .MuiDialog-container": {
           "& .MuiPaper-root": {
-            overflow: "visible", // Ensure dropdown is visible
+            overflow: "visible",
           },
         },
       }}
     >
       <DialogTitle sx={{ color: "#336B3F", fontWeight: "bold" }}>
-        Add Location
+        {isEditMode ? "Edit Location" : "Add Location"}
         <IconButton onClick={onClose} sx={{ position: "absolute", right: 10, top: 10, color: "#336B3F" }}>
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
       <DialogContent>
-        <Typography sx={{ mb: 2, color: "rgba(51,107,63,0.7)" }}>
-          Add home & work locations
-        </Typography>
-
         {loadError && (
           <Typography color="red">
             Failed to load maps. {loadError.message || "Please check your API key."}
@@ -322,8 +509,60 @@ const LocationDialog: React.FC<LocationDialogProps> = ({
             disabled={true}
           />
 
-          <Button type="submit" style={{ background: "#336B3F", color: "white", borderRadius: 12 }}>
-            Add Location
+          <Select
+            label="Address Type"
+            options={[
+              { value: "Home", label: "Home" },
+              { value: "Work", label: "Work" },
+              { value: "Other", label: "Other" },
+            ]}
+            value={addressType}
+            onChange={(e: React.ChangeEvent<{ value: unknown }>) => 
+              setAddressType(e.target.value as string)
+            }
+            variant="dialog"
+            fullWidth={true}
+          />
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <input
+              type="checkbox"
+              id="isDefault"
+              checked={isDefault}
+              onChange={(e) => setIsDefault(e.target.checked)}
+              style={{
+                width: "18px",
+                height: "18px",
+                cursor: "pointer",
+              }}
+            />
+            <Typography
+              component="label"
+              htmlFor="isDefault"
+              sx={{
+                color: "#336B3F",
+                fontWeight: "bold",
+                fontSize: { xs: "0.875rem", sm: "1rem" },
+                cursor: "pointer",
+              }}
+            >
+              Set as default address
+            </Typography>
+          </Box>
+
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+            style={{ background: "#336B3F", color: "white", borderRadius: 12 }}
+          >
+            {isSubmitting ? (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Loader size={20} color="#fff" />
+                <span>{isEditMode ? "Updating..." : "Adding..."}</span>
+              </Box>
+            ) : (
+              isEditMode ? "Update Location" : "Add Location"
+            )}
           </Button>
         </Box>
       </DialogContent>

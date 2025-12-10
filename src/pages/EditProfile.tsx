@@ -1,17 +1,13 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
   Box,
   Grid,
   Typography,
   Avatar,
-  IconButton,
   Container,
   FormControlLabel,
   FormGroup,
   Switch,
-  Card,
-  CardContent,
-  Divider,
 } from "@mui/material";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -21,14 +17,6 @@ import PaymentIcon from "@mui/icons-material/Payment";
 import PhoneIcon from "@mui/icons-material/Phone";
 import LogoutIcon from "@mui/icons-material/Logout";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
-import EmailIcon from "@mui/icons-material/Email";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
-import MicNoneOutlinedIcon from "@mui/icons-material/MicNoneOutlined";
-import EmojiEmotionsOutlinedIcon from "@mui/icons-material/EmojiEmotionsOutlined";
-import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import ArrowBackIosNewOutlinedIcon from "@mui/icons-material/ArrowBackIosNewOutlined";
 import { getCountries, getCountryCallingCode, getExampleNumber, parsePhoneNumber } from "libphonenumber-js";
 import examples from "libphonenumber-js/mobile/examples";
 import DashboardNavbar from "../components/DashboardNavbar";
@@ -40,9 +28,18 @@ import type { CardData } from "../components/dialogs/PaymentMethodDialog";
 import LocationDialog from "../components/dialogs/LocationDialog";
 import type { LocationData } from "../components/dialogs/LocationDialog";
 import LogoutDialog from "../components/dialogs/LogoutDialog";
+import ContactForm from "../components/profile/ContactForm";
+import PaymentCardForm from "../components/profile/PaymentCardForm";
+import LocationCard from "../components/profile/LocationCard";
 import { GOOGLE_MAPS_API_KEY } from "../utils/config";
-import AddIcon from '@mui/icons-material/Add';
+import { Autocomplete, useLoadScript } from "@react-google-maps/api";
 import "./EditProfile.css";
+
+const libraries: any[] = ["places"];
+import { getUserProfile, updateUserProfile } from "../utils/auth";
+import Loader from "../components/ui/Loader";
+import { showSuccessToast } from "../utils/toast";
+import { CheckCircle } from "@mui/icons-material";
 
 // Get country codes dynamically from libphonenumber-js
 const getCountryCodes = () => {
@@ -125,33 +122,78 @@ const EditProfile = () => {
   // Get dynamic data
   const countryCodes = useMemo(() => getCountryCodes(), []);
   const indianStates = useMemo(() => getIndianStates(), []);
-
-  // Form state variables
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [countryCode, setCountryCode] = useState("+1");
-  const [address, setAddress] = useState("");
-  const [zipCode, setZipCode] = useState("");
-  const [state, setState] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState({
+    _id: "",
+    fullName: "",
+    email: "",
+    phoneNumber: "",
+    countryCode: "+1",
+    address: "",
+    zipCode: "",
+    state: "",
+    profileImage: "",
+    isEmailVerified: false,
+    isPhoneVerified: false,
+  });
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [showProfileEditForm, setShowProfileEditForm] = useState(true);
   const [showContactForm, setShowContactForm] = useState(false);
   const [showPaymentCardForm, setShowPaymentCardForm] = useState(false);
   const [showLocationCard, setShowLocationCard] = useState(false);
   const [savedCards, setSavedCards] = useState<CardData[]>([]);
   const [savedLocations, setSavedLocations] = useState<LocationData[]>([]);
+  const [locationRefreshTrigger, setLocationRefreshTrigger] = useState(0);
+  const [editingAddress, setEditingAddress] = useState<any>(null);
   const [supportView, setSupportView] = useState<"menu" | "chat" | "call" | "faq">("menu");
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<
     { id: string; from: "user" | "assistant"; text: string; time: string }[]>([
-    { id: "1", from: "user", text: "Hey, I need help !", time: "08:15 AM" },
-    { id: "2", from: "assistant", text: "Good morning ! How can I help?", time: "08:20 AM" },
-  ]);
-  const [profileImage, setProfileImage] = useState<string | null>(
-    "https://media.istockphoto.com/id/1437816897/photo/business-woman-manager-or-human-resources-portrait-for-career-success-company-we-are-hiring.jpg?s=612x612&w=0&k=20&c=tyLvtzutRh22j9GqSGI33Z4HpIwv9vL_MZw_xOE19NQ="
-  );
+      { id: "1", from: "user", text: "Hey, I need help !", time: "08:15 AM" },
+      { id: "2", from: "assistant", text: "Good morning ! How can I help?", time: "08:20 AM" },
+    ]);
 
+  // Google Maps Autocomplete refs
+  const addressAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const addressInputRef = useRef<HTMLInputElement>(null);
+  const zipCodeAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const zipCodeInputRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
 
+  // Load Google Maps
+  const { isLoaded: isMapsLoaded } = useLoadScript({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries,
+  });
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await getUserProfile();
+      const user = response.user;
+      setProfile(prev => ({
+        ...prev,
+        _id: user?._id || "",
+        fullName: user?.fullName || "",
+        email: user?.email || "",
+        phoneNumber: user?.phoneNumber || "",
+        profileImage: user?.profileImage || "",
+        address: user?.address || "",
+        zipCode: user?.zipCode || "",
+        state: user?.state || "",
+        isEmailVerified: user?.isEmailVerified || false,
+        isPhoneVerified: user?.isPhoneVerified || false,
+      }));
+    } catch (err: any) {
+      console.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
   // Get country code object from dial code
   const getCountryCodeFromDialCode = (dialCode: string) => {
     const country = countryCodes.find(cc => cc.value === dialCode);
@@ -159,58 +201,110 @@ const EditProfile = () => {
   };
 
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    // Only allow digits
-    const digitsOnly = value.replace(/\D/g, '');
-    const countryCodeObj = getCountryCodeFromDialCode(countryCode);
+    const value = e.target.value.replace(/\D/g, ""); // digits only
+    const countryCodeObj = getCountryCodeFromDialCode(profile.countryCode);
     const maxLength = getMaxLengthForCountry(countryCodeObj);
-    const limitedValue = digitsOnly.slice(0, maxLength);
-    setPhoneNumber(limitedValue);
+    setProfile(prev => ({
+      ...prev,
+      phoneNumber: value.slice(0, maxLength)
+    }));
   };
 
   const handleCountryCodeChange = (e: React.ChangeEvent<{ value: unknown }>) => {
-    const newCountryCode = e.target.value as string;
-    setCountryCode(newCountryCode);
-    const countryCodeObj = getCountryCodeFromDialCode(newCountryCode);
+    const newCode = e.target.value as string;
+    const countryCodeObj = getCountryCodeFromDialCode(newCode);
     const maxLength = getMaxLengthForCountry(countryCodeObj);
-    if (phoneNumber.length > maxLength) {
-      setPhoneNumber(phoneNumber.slice(0, maxLength));
-    }
+    setProfile(prev => ({
+      ...prev,
+      countryCode: newCode,
+      phoneNumber: prev.phoneNumber.slice(0, maxLength)
+    }));
   };
+
+  // Handle address place selection
+  const handleAddressPlaceChanged = useCallback(() => {
+    if (addressAutocompleteRef.current) {
+      const place = addressAutocompleteRef.current.getPlace();
+      if (place) {
+        const addressValue = place.formatted_address || place.name || "";
+        setProfile(prev => ({ ...prev, address: addressValue }));
+        const comp = place.address_components || [];
+        const postal = comp.find((c: any) => c.types.includes("postal_code"));
+        if (postal) {
+          setProfile(prev => ({ ...prev, zipCode: postal.long_name }));
+        }
+        const st = comp.find((c: any) => c.types.includes("administrative_area_level_1"));
+        if (st) {
+          const stateLabel = st.long_name;
+          const matchedState = indianStates.find(s => s.label === stateLabel || s.label.toLowerCase() === stateLabel.toLowerCase());
+          if (matchedState) {
+            setProfile(prev => ({ ...prev, state: matchedState.value }));
+          } else {
+            setProfile(prev => ({ ...prev, state: stateLabel }));
+          }
+        }
+      }
+    }
+  }, [indianStates]);
+
+  // Handle zip code place selection
+  const handleZipCodePlaceChanged = useCallback(() => {
+    if (zipCodeAutocompleteRef.current) {
+      const place = zipCodeAutocompleteRef.current.getPlace();
+      if (place) {
+        const addressValue = place.formatted_address || place.name || "";
+        setProfile(prev => ({ ...prev, address: addressValue }));
+        const comp = place.address_components || [];
+        const postal = comp.find((c: any) => c.types.includes("postal_code"));
+        if (postal) {
+          setProfile(prev => ({ ...prev, zipCode: postal.long_name }));
+        }
+        const st = comp.find((c: any) => c.types.includes("administrative_area_level_1"));
+        if (st) {
+          const stateLabel = st.long_name;
+          const matchedState = indianStates.find(s => s.label === stateLabel || s.label.toLowerCase() === stateLabel.toLowerCase());
+          if (matchedState) {
+            setProfile(prev => ({ ...prev, state: matchedState.value }));
+          } else {
+            setProfile(prev => ({ ...prev, state: stateLabel }));
+          }
+        }
+      }
+    }
+  }, [indianStates]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image size should be less than 5MB');
-        return;
-      }
-      // Create preview
+      setSelectedImageFile(file);  // required for API
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileImage(reader.result as string);
-      };
+      reader.onloadend = () => setProfile((prev) => ({ ...prev!, profileImage: reader.result as string }));
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    console.log({
-      fullName,
-      email,
-      phoneNumber,
-      countryCode,
-      address,
-      zipCode,
-      state,
-      profileImage,
-    });
+    setSaving(true);
+    try {
+      const payload = {
+        fullName: profile.fullName,
+        phoneNumber: profile.phoneNumber
+      };
+      const res = await updateUserProfile(profile?._id, payload, selectedImageFile || undefined);
+      showSuccessToast("Profile Updated Successfully!");
+      setProfile((prev) => ({
+        ...prev!,
+        fullName: res.user.fullName,
+        phoneNumber: res.user.phoneNumber,
+        profileImage: res.user.profileImage,
+      }));
+      fetchProfile();
+    } catch (err: any) {
+      console.log(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleShowEditProfile = () => {
@@ -259,652 +353,454 @@ const EditProfile = () => {
     setSavedCards((prevCards) => {
       const exists = prevCards.some((c) => c.id === card.id);
       if (exists) {
-        return prevCards; 
+        return prevCards;
       }
       return [...prevCards, card];
     });
   };
 
-  const handleAddLocation = (location: LocationData) => {
-    setSavedLocations((prevLocations) => {
-      const exists = prevLocations.some((l) => l.id === location.id);
-      if (exists) {
-        return prevLocations;
-      }
-      return [...prevLocations, location];
-    });
+  const handleAddLocation = (_location: LocationData) => {
+    // Don't add to savedLocations - addresses will come from API
+    // Just trigger refresh to fetch updated addresses from API
+    setLocationRefreshTrigger((prev) => prev + 1);
   };
 
-  const maskCardNumber = (cardNumber: string) => {
-    const cleaned = cardNumber.replace(/\s/g, '');
-    if (cleaned.length < 4) return cardNumber;
-    const last4 = cleaned.slice(-4);
-    const first4 = cleaned.slice(0, 4);
-    return `${first4} – XXXX – XXXX – ${last4}`;
+  const handleEditLocation = (location: LocationData) => {
+    // Find the API address if this is an API address
+    // We'll need to pass the full API address object to the dialog
+    // For now, we'll set a flag and the LocationCard will pass the address
+    setEditingAddress(location);
+    setLocationDialogOpen(true);
   };
+
+  const handleDeleteLocation = (locationId: string) => {
+    setSavedLocations((prevLocations) => prevLocations.filter((l) => l.id !== locationId));
+    // Trigger refresh of addresses from API
+    setLocationRefreshTrigger((prev) => prev + 1);
+  };
+
+  const handleEditCard = (_card: CardData) => {
+    // Open payment method dialog with existing card data for editing
+    setPaymentMethodDialogOpen(true);
+    // TODO: Pass the card to the dialog if it supports editing
+    // For now, just opening the dialog - you may need to update PaymentMethodDialog to support edit mode
+  };
+
+  const handleDeleteCard = (cardId: string) => {
+    setSavedCards((prevCards) => prevCards.filter((c) => c.id !== cardId));
+  };
+
 
   return (
     <Box className="profile-page">
       <DashboardNavbar />
-      <main className="my-orders-content">
-        <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
-          <Grid container spacing={{ xs: 2, sm: 2, md: 2 }} sx={{ gap: { xs: 2, md: 2 } }}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Box className="sidebar-card" sx={{ padding: { xs: "20px", sm: "24px", md: "30px" } }}>
-                <Box className="sidebar-item" onClick={handleShowEditProfile}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, sm: 2.5, md: 3 } }}>
-                    <Avatar
-                      src={profileImage || "https://media.istockphoto.com/id/1437816897/photo/business-woman-manager-or-human-resources-portrait-for-career-success-company-we-are-hiring.jpg?s=612x612&w=0&k=20&c=tyLvtzutRh22j9GqSGI33Z4HpIwv9vL_MZw_xOE19NQ="}
-                      sx={{ width: { xs: 50, sm: 55, md: 60 }, height: { xs: 50, sm: 55, md: 60 } }}
-                    />
-                    <Box>
-                      <Typography className="item-title" sx={{ fontSize: { xs: "0.95rem", sm: "1rem", md: "1.1rem" } }}>theKStark</Typography>
-                      <Typography className="item-sub" sx={{ fontSize: { xs: "0.75rem", sm: "0.8rem", md: "0.875rem" } }}>ikstark@gmail.com</Typography>
-                    </Box>
-                  </Box>
-                  <ChevronRightIcon sx={{ fontSize: { xs: "1.2rem", md: "1.5rem" } }} />
-                </Box>
-                <Typography variant="h6" className="sidebar-section" sx={{ fontWeight: 'bold' }}>GENERAL</Typography>
-                <Box className="sidebar-item" onClick={() => handleShowPaymentCard()}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <PaymentIcon />
-                    <Box>
-                      <Typography className="item-title">Payment Methods</Typography>
-                      <Typography className="item-sub">Add credit & debit cards</Typography>
-                    </Box>
-                  </Box>
-                  <ChevronRightIcon />
-                </Box>
-                <Box className="sidebar-item" onClick={() => handleShowLocationCard()}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <LocationOnIcon />
-                    <Box>
-                      <Typography className="item-title">Locations</Typography>
-                      <Typography className="item-sub">Add home & work locations</Typography>
-                    </Box>
-                  </Box>
-                  <ChevronRightIcon />
-                </Box>
-                <Typography variant="h6" className="sidebar-section" sx={{ fontWeight: 'bold' }}>NOTIFICATIONS</Typography>
-                <Box className="sidebar-item">
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <NotificationsNoneIcon />
-                    <Box>
-                      <Typography className="item-title">Push Notifications</Typography>
-                      <Typography className="item-sub">Daily updates</Typography>
-                    </Box>
-                  </Box>
-                  <FormGroup>
-                    <FormControlLabel control={<Switch defaultChecked color="primary" />} label={undefined} />
-                  </FormGroup>
-                </Box>
-
-                <Box className="sidebar-item">
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <NotificationsNoneIcon />
-                    <Box>
-                      <Typography className="item-title">Promotional Notifications</Typography>
-                      <Typography className="item-sub">New offers</Typography>
-                    </Box>
-                  </Box>
-                  <FormGroup>
-                    <FormControlLabel control={<Switch defaultChecked color="primary" />} label={undefined} />
-                  </FormGroup>
-                </Box>
-                <Typography variant="h6" className="sidebar-section" sx={{ fontWeight: 'bold' }}>MORE</Typography>
-                <Box className="sidebar-item" onClick={handleShowContactForm}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <PhoneIcon />
-                    <Box>
-                      <Typography className="item-title">Contact Us</Typography>
-                      <Typography className="item-sub">Get help</Typography>
-                    </Box>
-                  </Box>
-                  <ChevronRightIcon />
-                </Box>
-
-                <Box className="sidebar-item" onClick={() => setLogoutDialogOpen(true)}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <LogoutIcon />
-                    <Box>
-                      <Typography className="item-title">Logout</Typography>
-                    </Box>
-                  </Box>
-                  <ChevronRightIcon />
-                </Box>
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              {showProfileEditForm && (
-                <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: { xs: 2, sm: 2.5, md: 3 } }}>
-                  <Box sx={{ display: "flex", justifyContent: "center", mb: 2, position: "relative" }}>
-                    <Box
-                      component="label"
-                      htmlFor="profile-image-upload"
-                      sx={{
-                        position: "relative",
-                        cursor: "pointer",
-                        display: "inline-block",
-                      }}
-                    >
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        style={{ display: "none" }}
-                        id="profile-image-upload"
-                      />
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <Loader />
+        </Box>
+      ) : (
+        <main className="my-orders-content">
+          <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
+            <Grid container spacing={{ xs: 2, sm: 2, md: 2 }} sx={{ gap: { xs: 2, md: 2 } }}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Box className="sidebar-card" sx={{ padding: { xs: "20px", sm: "24px", md: "30px" } }}>
+                  <Box className="sidebar-item" onClick={handleShowEditProfile}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, sm: 2.5, md: 3 } }}>
                       <Avatar
-                        src={profileImage || undefined}
-                        sx={{ width: { xs: 80, sm: 90, md: 100 }, height: { xs: 80, sm: 90, md: 100 } }}
+                        src={profile?.profileImage || "https://media.istockphoto.com/id/1437816897/photo/business-woman-manager-or-human-resources-portrait-for-career-success-company-we-are-hiring.jpg?s=612x612&w=0&k=20&c=tyLvtzutRh22j9GqSGI33Z4HpIwv9vL_MZw_xOE19NQ="}
+                        sx={{ width: { xs: 50, sm: 55, md: 60 }, height: { xs: 50, sm: 55, md: 60 } }}
                       />
-                      <Box
-                        sx={{
-                          position: "absolute",
-                          bottom: 0,
-                          right: 0,
-                          backgroundColor: "#336B3F",
-                          borderRadius: "50%",
-                          width: { xs: 28, sm: 30, md: 32 },
-                          height: { xs: 28, sm: 30, md: 32 },
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          border: "2px solid #C9F8BA",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <CameraAltIcon
-                          sx={{
-                            color: "#C9F8BA",
-                            fontSize: { xs: 16, sm: 17, md: 18 },
-                          }}
-                        />
+                      <Box>
+                        <Typography className="item-title" sx={{ fontSize: { xs: "0.95rem", sm: "1rem", md: "1.1rem" } }}>{profile?.fullName || "User Name"}</Typography>
+                        <Typography className="item-sub" sx={{ fontSize: { xs: "0.75rem", sm: "0.8rem", md: "0.875rem" } }}>{profile.email || "example@email.com"}</Typography>
                       </Box>
                     </Box>
+                    <ChevronRightIcon sx={{ fontSize: { xs: "1.2rem", md: "1.5rem" } }} />
                   </Box>
-                  <TextFieldComponent 
-                    label="Full Name" 
-                    value={fullName} 
-                    onChange={(e) => setFullName(e.target.value)} 
-                    borderColor="#C9F8BA"
-                    labelColor="#C9F8BA"
-                    textColor="#C9F8BA"
-                    required 
-                  />
-                  <TextFieldComponent 
-                    label="Email Address" 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)} 
-                    type="email" 
-                    borderColor="#C9F8BA"
-                    labelColor="#C9F8BA"
-                    textColor="#C9F8BA"
-                    required 
-                  />
-                  <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: { xs: 2, sm: 2 }, alignItems: { xs: "stretch", sm: "flex-start" } }}>
-                    <Box sx={{ width: { xs: "100%", sm: "120px" }, flexShrink: 0 }}>
-                      <Select
-                        label="Code"
-                        options={countryCodes}
-                        value={countryCode}
-                        onChange={handleCountryCodeChange}
-                        fullWidth={true}
-                        variant="dark"
-                      />
+                  <Typography variant="h6" className="sidebar-section" sx={{ fontWeight: 'bold' }}>GENERAL</Typography>
+                  <Box className="sidebar-item" onClick={() => handleShowPaymentCard()}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <PaymentIcon />
+                      <Box>
+                        <Typography className="item-title">Payment Methods</Typography>
+                        <Typography className="item-sub">Add credit & debit cards</Typography>
+                      </Box>
                     </Box>
-                    <Box sx={{ flex: 1 }}>
-                      <TextFieldComponent
-                        label="Phone Number"
-                        value={phoneNumber}
-                        onChange={handlePhoneNumberChange}
-                        borderColor="#C9F8BA"
-                        labelColor="#C9F8BA"
-                        textColor="#C9F8BA"
-                        required
-                      />
-                    </Box>
+                    <ChevronRightIcon />
                   </Box>
-                  <TextFieldComponent 
-                    label="Current Address" 
-                    value={address} 
-                    onChange={(e) => setAddress(e.target.value)} 
-                    borderColor="#C9F8BA"
-                    labelColor="#C9F8BA"
-                    textColor="#C9F8BA"
-                    required 
-                  />
-                  <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", sm: "center" }, gap: { xs: 2, sm: 3 } }}>
-                    <TextFieldComponent 
-                      label="Zip Code" 
-                      value={zipCode} 
-                      onChange={(e) => setZipCode(e.target.value)} 
+                  <Box className="sidebar-item" onClick={() => handleShowLocationCard()}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <LocationOnIcon />
+                      <Box>
+                        <Typography className="item-title">Locations</Typography>
+                        <Typography className="item-sub">Add home & work locations</Typography>
+                      </Box>
+                    </Box>
+                    <ChevronRightIcon />
+                  </Box>
+                  <Typography variant="h6" className="sidebar-section" sx={{ fontWeight: 'bold' }}>NOTIFICATIONS</Typography>
+                  <Box className="sidebar-item">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <NotificationsNoneIcon />
+                      <Box>
+                        <Typography className="item-title">Push Notifications</Typography>
+                        <Typography className="item-sub">Daily updates</Typography>
+                      </Box>
+                    </Box>
+                    <FormGroup>
+                      <FormControlLabel control={<Switch defaultChecked color="primary" />} label={undefined} />
+                    </FormGroup>
+                  </Box>
+
+                  <Box className="sidebar-item">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <NotificationsNoneIcon />
+                      <Box>
+                        <Typography className="item-title">Promotional Notifications</Typography>
+                        <Typography className="item-sub">New offers</Typography>
+                      </Box>
+                    </Box>
+                    <FormGroup>
+                      <FormControlLabel control={<Switch defaultChecked color="primary" />} label={undefined} />
+                    </FormGroup>
+                  </Box>
+                  <Typography variant="h6" className="sidebar-section" sx={{ fontWeight: 'bold' }}>MORE</Typography>
+                  <Box className="sidebar-item" onClick={handleShowContactForm}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <PhoneIcon />
+                      <Box>
+                        <Typography className="item-title">Contact Us</Typography>
+                        <Typography className="item-sub">Get help</Typography>
+                      </Box>
+                    </Box>
+                    <ChevronRightIcon />
+                  </Box>
+
+                  <Box className="sidebar-item" onClick={() => setLogoutDialogOpen(true)}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <LogoutIcon />
+                      <Box>
+                        <Typography className="item-title">Logout</Typography>
+                      </Box>
+                    </Box>
+                    <ChevronRightIcon />
+                  </Box>
+                </Box>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                {showProfileEditForm && (
+                  <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: { xs: 2, sm: 2.5, md: 3 } }}>
+                    <Box sx={{ display: "flex", justifyContent: "center", mb: 2, position: "relative" }}>
+                      <Box component="label" htmlFor="profile-image-upload" sx={{ position: "relative", cursor: "pointer", display: "inline-block", }}>
+                        <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: "none" }} id="profile-image-upload" />
+                        <Avatar src={profile?.profileImage || undefined} sx={{ width: { xs: 80, sm: 90, md: 100 }, height: { xs: 80, sm: 90, md: 100 } }} />
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            bottom: 0,
+                            right: 0,
+                            backgroundColor: "#336B3F",
+                            borderRadius: "50%",
+                            width: { xs: 28, sm: 30, md: 32 },
+                            height: { xs: 28, sm: 30, md: 32 },
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "2px solid #C9F8BA",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <CameraAltIcon sx={{ color: "#C9F8BA", fontSize: { xs: 16, sm: 17, md: 18 }, }} />
+                        </Box>
+                      </Box>
+                    </Box>
+                    <TextFieldComponent
+                      label="Full Name"
+                      value={profile?.fullName}
+                      onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
                       borderColor="#C9F8BA"
                       labelColor="#C9F8BA"
                       textColor="#C9F8BA"
-                      required 
+                      required
                     />
-                    <Select label="State" options={indianStates} value={state} onChange={(e) => setState(e.target.value as string)} placeholder="Select State" variant="dark" required />
-                  </Box>
-                  <Button
-                    type="button"
-                    size="large"
-                    onClick={() => setChangePasswordDialogOpen(true)}
-                    style={{
-                      backgroundColor: "transparent",
-                      border: "1px solid #C9F8BA",
-                      color: "#C9F8BA",
-                      borderRadius: "12px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "8px",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    Change Password
-                    <ArrowForwardIcon />
-                  </Button>
-                  <Button type="submit" size="large" style={{ backgroundColor: "#C9F8BA", border: "none", color: "#336B3F", borderRadius: "12px", fontWeight: "bold", }}>
-                    Save Changes
-                  </Button>
-                </Box>
-              )}
-
-              {showContactForm && (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  {supportView === "menu" && (
-                    <>
-                      <Typography variant="h6" sx={{ color: "rgba(255, 255, 255, 0.5)", fontWeight: "bold", mb: 1 }}>
-                        Please choose what types of support do you need and let us know.
-                      </Typography>
-                      <Grid container spacing={{ xs: 2, sm: 2 }}>
-                        {[
-                          { title: "Support Chat", subtitle: "24x7 Online Support", color: "#336B3F", icon: <ChatBubbleOutlineIcon sx={{ color: "#C9F8BA", fontSize: { xs: 24, sm: 28, md: 30 } }} />, view: "chat" },
-                          { title: "Call Center", subtitle: "24x7 Customer Service", color: "#FF6B35", icon: <PhoneIcon sx={{ color: "white", fontSize: { xs: 24, sm: 28, md: 30 } }} />, view: "call" },
-                          { title: "Email", subtitle: "admin@shifty.com", color: "#9B59B6", icon: <EmailIcon sx={{ color: "white", fontSize: { xs: 24, sm: 28, md: 30 } }} />, view: "chat" },
-                          { title: "FAQ", subtitle: "+50 Answers", color: "#F1C40F", icon: <HelpOutlineIcon sx={{ color: "#336B3F", fontSize: { xs: 24, sm: 28, md: 30 } }} />, view: "faq" },
-                        ].map((card) => (
-                          <Grid key={card.title} size={{ xs: 12, sm: 6 }}>
-                            <Box
-                              onClick={() => setSupportView(card.view as any)}
-                              sx={{
-                                backgroundColor: "#C9F8BA",
-                                borderRadius: { xs: "12px", sm: "16px" },
-                                padding: { xs: "16px", sm: "20px", md: "24px" },
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                textAlign: "center",
-                                cursor: "pointer",
-                                transition: "transform 0.2s",
-                                "&:hover": { transform: "scale(1.02)" },
-                              }}
-                            >
-                              <Box
-                                sx={{
-                                  width: { xs: 50, sm: 55, md: 60 },
-                                  height: { xs: 50, sm: 55, md: 60 },
-                                  borderRadius: "50%",
-                                  backgroundColor: card.color,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  mb: { xs: 1.5, sm: 2 },
-                                }}
-                              >
-                                {card.icon}
-                              </Box>
-                              <Typography variant="h6" sx={{ color: "#336B3F", fontWeight: "bold", mb: 1, fontSize: { xs: "1rem", sm: "1.1rem", md: "1.25rem" } }}>
-                                {card.title}
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: "#336B3F", opacity: 0.7, fontSize: { xs: "0.8rem", sm: "0.875rem", md: "0.95rem" } }}>
-                                {card.subtitle}
-                              </Typography>
-                            </Box>
-                          </Grid>
-                        ))}
-                      </Grid>
-                    </>
-                  )}
-
-                  {supportView === "chat" && (
-                    <Box sx={{ backgroundColor: "#2F6B3C", borderRadius: { xs: "20px", sm: "24px", md: "28px" }, overflow: "hidden", border:'1px solid #C9F8BA' }}>
-                      <Box sx={{ display: "flex", alignItems: "center", p: { xs: 1.5, sm: 2 }, borderBottom: "1px solid rgba(201, 248, 186, 0.2)" }}>
-                        <IconButton onClick={() => setSupportView("menu")} sx={{ color: "#C9F8BA", mr: 1 }}>
-                          <ArrowBackIosNewOutlinedIcon fontSize="small" />
-                        </IconButton>
-                        <Typography sx={{ flexGrow: 1, color: "#C9F8BA", fontWeight: "bold", fontSize: { xs: "0.9rem", sm: "1rem" } }}>Assistant</Typography>
-                        <Typography sx={{ color: "rgba(201, 248, 186, 0.6)", fontSize: { xs: "0.75rem", sm: "0.85rem" } }}>Online</Typography>
+                    <Box sx={{ position: "relative" }}>
+                      <TextFieldComponent
+                        label="Email Address"
+                        value={profile.email}
+                        onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                        type="email"
+                        borderColor="#C9F8BA"
+                        labelColor="#C9F8BA"
+                        textColor="#C9F8BA"
+                        disabled
+                      />
+                      {profile.isEmailVerified && (
+                        <CheckCircle
+                          sx={{
+                            position: "absolute",
+                            right: 14,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: "#c9f8ba",
+                            fontSize: { xs: 20, sm: 22, md: 24 }
+                          }}
+                        />
+                      )}
+                    </Box>
+                    <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: { xs: 2, sm: 2 }, alignItems: { xs: "stretch", sm: "flex-start" } }}>
+                      <Box sx={{ width: { xs: "100%", sm: "120px" }, flexShrink: 0 }}>
+                        <Select label="Code" options={countryCodes} value={profile?.countryCode} onChange={handleCountryCodeChange} fullWidth={true} variant="dark" />
                       </Box>
-                      <Box sx={{ p: { xs: 2, sm: 2.5, md: 3 }, display: "flex", flexDirection: "column", gap: 2, minHeight: { xs: 300, sm: 400, md: 450 } }}>
-                        {chatMessages?.map((message) => (
-                          <Box
-                            key={message.id}
+                      <Box sx={{ flex: 1, position: "relative" }}>
+                        <TextFieldComponent
+                          label="Phone Number"
+                          value={profile.phoneNumber}
+                          onChange={handlePhoneNumberChange}
+                          borderColor="#C9F8BA"
+                          labelColor="#C9F8BA"
+                          textColor="#C9F8BA"
+                          required
+                        />
+
+                        {profile.isPhoneVerified && (
+                          <CheckCircle
                             sx={{
-                              alignSelf: message.from === "user" ? "flex-end" : "flex-start",
-                              backgroundColor: message.from === "user" ? "#C9F8BA" : "rgba(255,255,255,0.08)",
-                              color: message.from === "user" ? "#336B3F" : "rgba(201, 248, 186, 0.8)",
-                              px: 2.5,
-                              py: 1.5,
-                              borderRadius: "24px",
-                              maxWidth: "60%",
+                              position: "absolute",
+                              right: 14,
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              color: "#c9f8ba",
+                              fontSize: { xs: 20, sm: 22, md: 24 }
                             }}
-                          >
-                            <Typography sx={{ fontSize: "0.95rem" }}>{message.text}</Typography>
-                            <Typography sx={{ fontSize: "0.7rem", opacity: 0.6, mt: 0.5, textAlign: "right" }}>
-                              {message.time}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                      <Box sx={{ backgroundColor: "#C9F8BA", display: "flex", alignItems: "center", gap: { xs: 1, sm: 1.5 }, p: { xs: 1.5, sm: 2 }, flexWrap: "nowrap" }}>
-                        <IconButton sx={{ color: "#336B3F", padding: { xs: "6px", sm: "8px" } }}>
-                          <ImageOutlinedIcon sx={{ fontSize: { xs: "20px", sm: "24px" } }} />
-                        </IconButton>
-                        <IconButton sx={{ color: "#336B3F", padding: { xs: "6px", sm: "8px" } }}>
-                          <MicNoneOutlinedIcon sx={{ fontSize: { xs: "20px", sm: "24px" } }} />
-                        </IconButton>
-                        <Box sx={{ flexGrow: 1, backgroundColor: "rgba(51, 107, 63, 0.1)", borderRadius: { xs: "20px", sm: "24px" }, display: "flex", alignItems: "center", px: { xs: 1.5, sm: 2 }, minWidth: 0 }}>
-                          <input
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            placeholder="Aa"
-                            style={{ flexGrow: 1, border: "none", background: "transparent", outline: "none", color: "#336B3F", fontSize: "0.875rem", minWidth: 0 }}
                           />
-                          <IconButton sx={{ color: "#336B3F", padding: { xs: "4px", sm: "8px" } }}>
-                            <EmojiEmotionsOutlinedIcon sx={{ fontSize: { xs: "18px", sm: "24px" } }} />
-                          </IconButton>
-                        </Box>
-                        <IconButton
-                          onClick={handleSendChatMessage}
-                          sx={{ backgroundColor: "#336B3F", color: "#C9F8BA", "&:hover": { backgroundColor: "#285230" }, padding: { xs: "6px", sm: "8px" } }}
-                        >
-                          <SendRoundedIcon sx={{ fontSize: { xs: "18px", sm: "24px" } }} />
-                        </IconButton>
+                        )}
                       </Box>
                     </Box>
-                  )}
-
-                  {supportView === "call" && (
-                    <Box sx={{ backgroundColor: "#2F6B3C", borderRadius: { xs: "20px", sm: "24px", md: "28px" }, p: { xs: 2.5, sm: 3, md: 4 }, color: "#C9F8BA" }}>
-                      <Box sx={{ display: "flex", alignItems: "center", mb: { xs: 2, sm: 2.5, md: 3 }, gap: 2 }}>
-                        <IconButton onClick={() => setSupportView("menu")} sx={{ color: "#C9F8BA" }}>
-                          <ArrowBackIosNewOutlinedIcon fontSize="small" />
-                        </IconButton>
-                        <Typography variant="h5" sx={{ fontWeight: "bold", fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" } }}>Call Center</Typography>
-                      </Box>
-                      <Typography variant="body1" sx={{ mb: 2, fontSize: { xs: "0.875rem", sm: "0.95rem", md: "1rem" } }}>
-                        Speak directly with our specialists for instant resolution.
+                    {/* Current Address Autocomplete */}
+                    <Box>
+                      <Typography
+                        component="label"
+                        sx={{
+                          display: "block",
+                          mb: 1,
+                          color: "#C9F8BA",
+                          fontWeight: "bold",
+                          fontSize: { xs: "0.875rem", sm: "1rem" },
+                        }}
+                      >
+                        Current Address <span style={{ color: "red" }}>*</span>
                       </Typography>
-                      <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2, mb: { xs: 2, sm: 2.5, md: 3 }, "& > button": { width: { xs: "100%", sm: "auto" } } }}>
-                        <Button size="large" style={{ backgroundColor: "#C9F8BA", color: "#336B3F", borderRadius: "16px", fontWeight: "bold" }}>
-                          Call Now
-                        </Button>
-                        <Button size="large" style={{ backgroundColor: "transparent", border: "1px solid rgba(201,248,186,0.4)", color: "#C9F8BA", borderRadius: "16px" }}>
-                          Schedule Callback
-                        </Button>
-                      </Box>
-                      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                        <Typography variant="body2">Hotline: +1 800 223 8899</Typography>
-                        <Typography variant="body2">Support PIN: 9835</Typography>
-                        <Typography variant="body2" sx={{ opacity: 0.7 }}>Average wait time: less than 2 mins</Typography>
-                      </Box>
+                      {isMapsLoaded ? (
+                        <Box sx={{ position: "relative" }}>
+                          <Autocomplete
+                            onLoad={(ref) => {
+                              addressAutocompleteRef.current = ref;
+                            }}
+                            onPlaceChanged={handleAddressPlaceChanged}
+                          >
+                            <input
+                              ref={addressInputRef}
+                              type="text"
+                              value={profile?.address || ""}
+                              onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                              placeholder="Enter address"
+                              required
+                              style={{
+                                width: "100%",
+                                padding: "14px 16px",
+                                fontSize: "1rem",
+                                border: "2.5px solid #C9F8BA",
+                                borderRadius: "14px",
+                                outline: "none",
+                                backgroundColor: "transparent",
+                                color: "#C9F8BA",
+                              }}
+                            />
+                          </Autocomplete>
+                          <style>{`
+                            .pac-container {
+                              z-index: 1400 !important;
+                              border-radius: 14px;
+                              margin-top: 4px;
+                            }
+                            .pac-item {
+                              padding: 10px;
+                              cursor: pointer;
+                            }
+                            .pac-item:hover {
+                              background-color: #f5f5f5;
+                            }
+                            input::placeholder {
+                              color: #C9F8BA !important;
+                              opacity: 0.7;
+                            }
+                            input::-webkit-input-placeholder {
+                              color: #C9F8BA !important;
+                              opacity: 0.7;
+                            }
+                            input::-moz-placeholder {
+                              color: #C9F8BA !important;
+                              opacity: 0.7;
+                            }
+                            input:-ms-input-placeholder {
+                              color: #C9F8BA !important;
+                              opacity: 0.7;
+                            }
+                          `}</style>
+                        </Box>
+                      ) : (
+                        <TextFieldComponent
+                          label="Current Address"
+                          value={profile?.address}
+                          onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                          borderColor="#C9F8BA"
+                          labelColor="#C9F8BA"
+                          textColor="#C9F8BA"
+                          required
+                          disabled={true}
+                        />
+                      )}
                     </Box>
-                  )}
 
-                  {supportView === "faq" && (
-                    <Box sx={{ backgroundColor: "#2F6B3C", borderRadius: { xs: "20px", sm: "24px", md: "28px" }, p: { xs: 2.5, sm: 3, md: 4 }, color: "#C9F8BA" }}>
-                      <Box sx={{ display: "flex", alignItems: "center", mb: { xs: 2, sm: 2.5, md: 3 }, gap: 2 }}>
-                        <IconButton onClick={() => setSupportView("menu")} sx={{ color: "#C9F8BA" }}>
-                          <ArrowBackIosNewOutlinedIcon fontSize="small" />
-                        </IconButton>
-                        <Typography variant="h5" sx={{ fontWeight: "bold", fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" } }}>Frequently Asked Questions</Typography>
-                      </Box>
-                      <Box sx={{ display: "flex", flexDirection: "column", gap: { xs: 1.5, sm: 2 } }}>
-                        {[
-                          { q: "How do I reschedule my pickup?", a: "Go to Orders > Select order > Reschedule." },
-                          { q: "Where can I track my order?", a: "Open Order History and tap on the order status card." },
-                          { q: "How do I update my payment method?", a: "Navigate to Profile > Payment Method > Add card." },
-                          { q: "Do you offer express service?", a: "Yes, choose Express at checkout for next-day delivery." },
-                        ].map((faq) => (
-                          <Box key={faq.q} sx={{ backgroundColor: "rgba(201,248,186,0.1)", borderRadius: { xs: "16px", sm: "20px" }, p: { xs: 2, sm: 2.5, md: 3 } }}>
-                            <Typography sx={{ fontWeight: "bold", mb: 1, fontSize: { xs: "0.9rem", sm: "1rem", md: "1.1rem" } }}>{faq.q}</Typography>
-                            <Typography sx={{ opacity: 0.8, fontSize: { xs: "0.8rem", sm: "0.875rem", md: "0.95rem" } }}>{faq.a}</Typography>
+                    <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", sm: "center" }, gap: { xs: 2, sm: 3 } }}>
+                      <Box sx={{ flex: 1 }}>
+                        {isMapsLoaded ? (
+                          <Box sx={{ position: "relative" }}>
+                            <Autocomplete
+                              onLoad={(ref) => {
+                                zipCodeAutocompleteRef.current = ref;
+                              }}
+                              onPlaceChanged={handleZipCodePlaceChanged}
+                            >
+                              <input
+                                ref={zipCodeInputRef}
+                                type="text"
+                                value={profile?.zipCode || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, "");
+                                  setProfile({ ...profile, zipCode: value });
+                                }}
+                                placeholder="Enter zip code or search by postal code"
+                                required
+                                style={{
+                                  width: "100%",
+                                  padding: "14px 16px",
+                                  fontSize: "1rem",
+                                  border: "2.5px solid #C9F8BA",
+                                  borderRadius: "14px",
+                                  outline: "none",
+                                  backgroundColor: "transparent",
+                                  color: "#C9F8BA",
+                                }}
+                              />
+                            </Autocomplete>
+                            <style>{`
+                              input::placeholder {
+                                color: #C9F8BA !important;
+                                opacity: 0.7;
+                              }
+                              input::-webkit-input-placeholder {
+                                color: #C9F8BA !important;
+                                opacity: 0.7;
+                              }
+                              input::-moz-placeholder {
+                                color: #C9F8BA !important;
+                                opacity: 0.7;
+                              }
+                              input:-ms-input-placeholder {
+                                color: #C9F8BA !important;
+                                opacity: 0.7;
+                              }
+                            `}</style>
                           </Box>
-                        ))}
+                        ) : (
+                          <TextFieldComponent
+                            label="Zip Code"
+                            value={profile?.zipCode}
+                            onChange={(e) => setProfile({ ...profile, zipCode: e.target.value })}
+                            borderColor="#C9F8BA"
+                            labelColor="#C9F8BA"
+                            textColor="#C9F8BA"
+                            required
+                            disabled={true}
+                          />
+                        )}
+                      </Box>
+
+                      <Box sx={{ flex: 1 }}>
+                        <TextFieldComponent
+                          label="State"
+                          value={profile?.state ? (indianStates.find(s => s.value === profile.state)?.label || profile.state) : ""}
+                          onChange={() => { }} // Read-only, auto-populated from address
+                          placeholder="State will be auto-filled from address"
+                          borderColor="#C9F8BA"
+                          labelColor="#C9F8BA"
+                          textColor="#C9F8BA"
+                          required
+                          type="text"
+                          disabled={true}
+                        />
                       </Box>
                     </Box>
-                  )}
-                </Box>
-              )}
-              {showPaymentCardForm && (
-                <Box>
-                  <Card sx={{ backgroundColor: "rgba(201, 248, 186, 1)", borderRadius: { xs: "12px", sm: "16px" } }}>
-                    <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-                      <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, gap: { xs: 2, sm: 0 }, mb: 2 }}>
-                        <Typography variant="h6" sx={{ fontWeight: "bold", color: "#336B3F", fontSize: { xs: "1.1rem", sm: "1.25rem", md: "1.5rem" } }}>My Cards</Typography>
-                        <Button
-                          onClick={() => handlePaymentMethodDialogOpen()}
-                          type="button"
-                          size="small"
-                          style={{
-                            backgroundColor: "#C9F8BA",
-                            border: "1px solid #336B3F",
-                            color: "#336B3F",
-                            borderRadius: "12px",
-                            fontWeight: "bold",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            padding: "6px 12px"
-                          }}
-                        >
-                          <AddIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />
-                          Add New
-                        </Button>
-                      </Box>
-                      <Divider sx={{ my: 2, backgroundColor: "rgba(143, 146, 161, 0.1)" }} />
-                      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        {savedCards.length === 0 ? (
-                          <Typography sx={{ color: "rgba(51, 107, 63, 0.7)", textAlign: "center", py: 4 }}>
-                            No cards added yet. Click "Add New" to add a card.
-                          </Typography>
-                        ) : (
-                          savedCards.map((card) => (
-                              <Box
-                                key={card.id}
-                                sx={{
-                                  background: "linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7b4397 100%)",
-                                  borderRadius: { xs: "12px", sm: "16px" },
-                                  padding: { xs: "16px", sm: "20px", md: "24px" },
-                                  color: "white",
-                                  position: "relative",
-                                  minHeight: { xs: "180px", sm: "200px" },
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  justifyContent: "space-between",
-                                }}
-                              >
-                              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                                <Box sx={{ display: "flex", gap: 1 }}>
-                                  <Box
-                                    sx={{
-                                      width: 40,
-                                      height: 40,
-                                      borderRadius: "50%",
-                                      backgroundColor: "#EB001B",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                    }}
-                                  >
-                                    <Box
-                                      sx={{
-                                        width: 30,
-                                        height: 30,
-                                        borderRadius: "50%",
-                                        backgroundColor: "#F79E1B",
-                                        marginLeft: "-15px",
-                                      }}
-                                    />
-                                  </Box>
-                                </Box>
-                                <Box
-                                  sx={{
-                                    width: 40,
-                                    height: 30,
-                                    backgroundColor: "#FFD700",
-                                    borderRadius: "4px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                  }}
-                                >
-                                  <Box
-                                    sx={{
-                                      width: "80%",
-                                      height: "60%",
-                                      backgroundColor: "rgba(0,0,0,0.1)",
-                                      borderRadius: "2px",
-                                    }}
-                                  />
-                                </Box>
-                              </Box>
-                              <Box sx={{ mt: 4 }}>
-                                <Typography
-                                  variant="h6"
-                                  sx={{
-                                    fontSize: "20px",
-                                    letterSpacing: "2px",
-                                    fontFamily: "monospace",
-                                    mb: 3,
-                                  }}
-                                >
-                                  {maskCardNumber(card.cardNumber)}
-                                </Typography>
-                                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-                                  <Box>
-                                    <Typography variant="caption" sx={{ opacity: 0.8, fontSize: "10px" }}>
-                                      CARDHOLDER NAME
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ fontSize: "14px", fontWeight: "bold" }}>
-                                      {card.cardHolderName}
-                                    </Typography>
-                                  </Box>
-                                  <Box sx={{ textAlign: "right" }}>
-                                    <Typography variant="caption" sx={{ opacity: 0.8, fontSize: "10px" }}>
-                                      VALID THRU
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ fontSize: "14px", fontWeight: "bold" }}>
-                                      {card.expiryDate}
-                                    </Typography>
-                                  </Box>
-                                </Box>
-                              </Box>
-                            </Box>
-                          ))
-                        )}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Box>
-              )}
+                    <Button
+                      type="button"
+                      size="large"
+                      onClick={() => setChangePasswordDialogOpen(true)}
+                      style={{
+                        backgroundColor: "transparent",
+                        border: "1px solid #C9F8BA",
+                        color: "#C9F8BA",
+                        borderRadius: "12px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      Change Password
+                      <ArrowForwardIcon />
+                    </Button>
+                    <Button type="submit" disabled={saving}  size="large" style={{ backgroundColor: "#C9F8BA", border: "none", color: "#336B3F", borderRadius: "12px", fontWeight: "bold", }}>
+                      {saving ? <Loader size={20} color="#fff" /> : "Save Changes"}
+                    </Button>
+                  </Box>
+                )}
 
-              {showLocationCard && (
-                <Box>
-                  <Card sx={{ backgroundColor: "rgba(201, 248, 186, 1)", borderRadius: { xs: "12px", sm: "16px" } }}>
-                    <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-                      <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, gap: { xs: 2, sm: 0 }, mb: 2 }}>
-                        <Typography variant="h6" sx={{ fontWeight: "bold", color: "#336B3F", fontSize: { xs: "1.1rem", sm: "1.25rem", md: "1.5rem" } }}>My Locations</Typography>
-                        <Button
-                          onClick={() => setLocationDialogOpen(true)}
-                          type="button"
-                          size="small"
-                          style={{
-                            backgroundColor: "#C9F8BA",
-                            border: "1px solid #336B3F",
-                            color: "#336B3F",
-                            borderRadius: "12px",
-                            fontWeight: "bold",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            padding: "6px 12px"
-                          }}
-                        >
-                          <AddIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />
-                          Add New
-                        </Button>
-                      </Box>
-                      <Divider sx={{ my: 2, backgroundColor: "rgba(143, 146, 161, 0.1)" }} />
-                      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        {savedLocations.length === 0 ? (
-                          <Typography sx={{ color: "rgba(51, 107, 63, 0.7)", textAlign: "center", py: 4 }}>
-                            No locations added yet. Click "Add New" to add a location.
-                          </Typography>
-                        ) : (
-                          savedLocations.map((location) => {
-                            const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(
-                              location.address
-                            )}&zoom=15&size=400x150&markers=color:blue|label:H|${encodeURIComponent(location.address)}&key=${GOOGLE_MAPS_API_KEY}`;
+                {showContactForm && (
+                  <ContactForm
+                    supportView={supportView}
+                    setSupportView={setSupportView}
+                    chatMessages={chatMessages}
+                    chatInput={chatInput}
+                    setChatInput={setChatInput}
+                    onSendChatMessage={handleSendChatMessage}
+                  />
+                )}
+                {showPaymentCardForm && (
+                  <PaymentCardForm
+                    savedCards={savedCards}
+                    onAddCard={handlePaymentMethodDialogOpen}
+                    onEditCard={handleEditCard}
+                    onDeleteCard={handleDeleteCard}
+                  />
+                )}
 
-                            return (
-                              <Box
-                                key={location.id}
-                                sx={{
-                                  backgroundColor: "rgba(51, 107, 63, 0.1)",
-                                  borderRadius: "12px",
-                                  overflow: "hidden",
-                                  border: "1px solid rgba(51, 107, 63, 0.2)",
-                                }}
-                              >
-                                {/* Map Preview */}
-                                <Box
-                                  component="img"
-                                  src={mapUrl}
-                                  alt={location.address}
-                                  sx={{
-                                    width: "100%",
-                                    height: { xs: "120px", sm: "140px", md: "150px" },
-                                    objectFit: "cover",
-                                    borderTopLeftRadius: { xs: "8px", sm: "12px" },
-                                    borderTopRightRadius: { xs: "8px", sm: "12px" },
-                                  }}
-                                />
-
-                                {/* Address Details */}
-                                <Box sx={{ display: "flex", alignItems: "flex-start", gap: { xs: 1.5, sm: 2 }, p: { xs: 1.5, sm: 2 } }}>
-                                  <LocationOnIcon sx={{ color: "#336B3F", fontSize: { xs: 24, sm: 26, md: 28 }, mt: 0.5 }} />
-                                  <Box sx={{ flex: 1 }}>
-                                    <Typography variant="h6" sx={{ color: "#336B3F", fontWeight: "bold", mb: 1, fontSize: { xs: "0.95rem", sm: "1.1rem", md: "1.25rem" } }}>
-                                      {location.address}
-                                    </Typography>
-                                    <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: { xs: 0.5, sm: 2 }, mt: 1 }}>
-                                      <Typography variant="body2" sx={{ color: "rgba(51, 107, 63, 0.7)", fontSize: { xs: "0.8rem", sm: "0.875rem" } }}>
-                                        <strong>Zip Code:</strong> {location.zipCode}
-                                      </Typography>
-                                      <Typography variant="body2" sx={{ color: "rgba(51, 107, 63, 0.7)", fontSize: { xs: "0.8rem", sm: "0.875rem" } }}>
-                                        <strong>State:</strong> {indianStates.find(s => s.value === location.state)?.label || location.state}
-                                      </Typography>
-                                    </Box>
-                                  </Box>
-                                </Box>
-                              </Box>
-                            );
-                          })
-                        )}
-                      </Box>
-
-                    </CardContent>
-                  </Card>
-                </Box>
-              )}
+                {showLocationCard && (
+                  <LocationCard
+                    savedLocations={savedLocations}
+                    indianStates={indianStates}
+                    onAddLocation={() => setLocationDialogOpen(true)}
+                    onEditLocation={handleEditLocation}
+                    onDeleteLocation={handleDeleteLocation}
+                    refreshTrigger={locationRefreshTrigger}
+                  />
+                )}
+              </Grid>
             </Grid>
-          </Grid>
-        </Container>
-      </main>
-
+          </Container>
+        </main>
+      )}
       {/* DIALOGS */}
       <ChangePasswordDialog
         open={changePasswordDialogOpen}
@@ -917,9 +813,13 @@ const EditProfile = () => {
       />
       <LocationDialog
         open={locationDialogOpen}
-        onClose={() => setLocationDialogOpen(false)}
+        onClose={() => {
+          setLocationDialogOpen(false);
+          setEditingAddress(null);
+        }}
         onAddLocation={handleAddLocation}
         indianStates={indianStates}
+        editAddress={editingAddress}
       />
       <LogoutDialog
         open={logoutDialogOpen}
